@@ -163,6 +163,7 @@ function App(){
   const [cameraLoading,setCameraLoading] = useState(false);
   const [cameraError,setCameraError] = useState(null);
   const [copied,setCopied]           = useState(false);
+  const [editingRound,setEditingRound] = useState(null); // pip value of round being edited, or null
   const fileRef = useRef();
 
   const fb = ()=>window.__fb;
@@ -227,19 +228,23 @@ function App(){
   }
 
   async function submitScore(score){
-    const ridx=String(startPip-currentRound);
+    const targetRound = editingRound !== null ? editingRound : currentRound;
+    const ridx=String(startPip-targetRound);
     const updates={};
     updates[`games/${gameCode}/scores/${myName}/${ridx}`]=score;
-    const allDone=players.every(p=>p===myName?true:scores[p]?.[ridx]!=null);
-    if(allDone){
-      const roundsList=gameData?.roundsList??[];
-      const currentIdx=roundsList.indexOf(currentRound);
-      const nextRound=roundsList[currentIdx+1];
-      if(nextRound!=null) updates[`games/${gameCode}/currentRound`]=nextRound;
-      else updates[`games/${gameCode}/status`]="done";
+    // Only check for round advancement when submitting a fresh score (not editing a past round)
+    if(editingRound===null){
+      const allDone=players.every(p=>p===myName?true:scores[p]?.[ridx]!=null);
+      if(allDone){
+        const roundsList=gameData?.roundsList??[];
+        const currentIdx=roundsList.indexOf(currentRound);
+        const nextRound=roundsList[currentIdx+1];
+        if(nextRound!=null) updates[`games/${gameCode}/currentRound`]=nextRound;
+        else updates[`games/${gameCode}/status`]="done";
+      }
     }
     await fb().update(fb().ref(fb().db),updates);
-    setSelected({});setCameraScore(null);
+    setSelected({});setCameraScore(null);setEditingRound(null);
     setScreen("scorecard");
   }
 
@@ -516,9 +521,18 @@ function App(){
                 </div>
                 <div style={{fontFamily:"'Fredoka One',cursive",fontSize:32,color:C.dark,flexShrink:0}}>{total}</div>
                 {hasScore
-                  ?<div style={{fontSize:22,color:C.teal,flexShrink:0}}>✓</div>
+                  ? isMe
+                    ? <button onClick={()=>{
+                        setSelected({});setCameraMode(false);setCameraScore(null);
+                        setEditingRound(currentRound);
+                        setScreen("counter");
+                      }} style={{background:`${C.teal}18`,border:`1.5px solid ${C.teal}55`,borderRadius:10,padding:"7px 11px",cursor:"pointer",display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+                        <span style={{fontSize:16,color:C.teal}}>✓</span>
+                        <span style={{fontSize:11,color:C.teal,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Edit</span>
+                      </button>
+                    : <div style={{fontSize:22,color:C.teal,flexShrink:0}}>✓</div>
                   :isMe
-                    ?<button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setScreen("counter");}} style={{...btnStyle(`linear-gradient(135deg, ${C.sky}, ${C.teal})`),padding:"10px 14px",fontSize:13,borderRadius:12,flexShrink:0}}>SCORE</button>
+                    ?<button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(null);setScreen("counter");}} style={{...btnStyle(`linear-gradient(135deg, ${C.sky}, ${C.teal})`),padding:"10px 14px",fontSize:13,borderRadius:12,flexShrink:0}}>SCORE</button>
                     :<div style={{fontSize:12,color:"#ccc",fontWeight:600,flexShrink:0}}>waiting…</div>
                 }
               </div>
@@ -541,19 +555,25 @@ function App(){
 
   // ── COUNTER ────────────────────────────────────────────────────────────────
   if(screen==="counter"&&gameData){
+    const targetRound = editingRound !== null ? editingRound : currentRound;
+    const existingScore = editingRound !== null ? getRound(myName, editingRound) : null;
     const score=cameraScore!==null?cameraScore:calcScore();
     const tiles=Array.from({length:startPip+1},(_,i)=>i);
     const pIdx=players.indexOf(myName);
     return(
       <Screen style={{background:C.bg}}>
         <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}cc, ${C.coral})`,padding:"calc(env(safe-area-inset-top) + 18px) 18px 18px",display:"flex",alignItems:"center",gap:13}}>
-          <button onClick={()=>setScreen("scorecard")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <button onClick={()=>{setEditingRound(null);setScreen("scorecard");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <Avatar name={myName} idx={pIdx} size={48}/>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:"rgba(255,255,255,0.75)",fontSize:11,fontWeight:700}}>Round {currentRound} · scoring for</div>
+            <div style={{color:"rgba(255,255,255,0.75)",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
+              Round {targetRound} · scoring for
+              {editingRound!==null&&<span style={{background:"rgba(255,255,255,0.25)",borderRadius:50,padding:"2px 8px",fontSize:10,fontWeight:800,letterSpacing:0.5}}>EDITING</span>}
+            </div>
             <div style={{color:"#fff",fontWeight:900,fontSize:20,fontFamily:"'Fredoka One',cursive",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{myName}</div>
           </div>
           <div style={{textAlign:"right",flexShrink:0}}>
+            {editingRound!==null&&existingScore!==null&&<div style={{color:"rgba(255,255,255,0.55)",fontSize:10,fontWeight:700,textDecoration:"line-through"}}>{existingScore}</div>}
             <div style={{color:"rgba(255,255,255,0.65)",fontSize:10,fontWeight:700}}>PIPS</div>
             <div style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:"clamp(38px,11vw,52px)",lineHeight:1}}>{score}</div>
           </div>
@@ -613,7 +633,7 @@ function App(){
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setSelected({})} style={{flex:1,padding:"14px 0",borderRadius:50,border:"none",background:"#f0f0f0",color:C.muted,fontSize:14,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>CLEAR</button>
-              <button onClick={()=>submitScore(score)} style={{flex:2,padding:"14px 0",borderRadius:50,border:"none",background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",boxShadow:`0 6px 22px ${C.pink}44`,letterSpacing:1}}>SUBMIT</button>
+              <button onClick={()=>submitScore(score)} style={{flex:2,padding:"14px 0",borderRadius:50,border:"none",background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",boxShadow:`0 6px 22px ${C.pink}44`,letterSpacing:1}}>{editingRound!==null?"UPDATE":"SUBMIT"}</button>
             </div>
           </div>
         </BottomBar>
@@ -709,11 +729,14 @@ function App(){
                       </div>
                     </td>
                     {roundPips.map(pip=>{
-                      const s=getRound(name,pip),isWin=s===0;
+                      const s=getRound(name,pip),isWin=s===0,isMyScore=name===myName&&s!==null;
                       return(
                         <td key={pip} style={{padding:"7px 3px",textAlign:"center"}}>
                           {s!==null
-                            ?<div style={{display:"inline-block",minWidth:26,padding:"2px 3px",borderRadius:5,background:isWin?C.gold:"transparent",color:isWin?C.dark:"rgba(255,255,255,0.8)",fontWeight:isWin?900:400,fontSize:13}}>{s}</div>
+                            ?<div
+                                onClick={isMyScore?()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(pip);setScreen("counter");}:undefined}
+                                style={{display:"inline-block",minWidth:26,padding:"2px 3px",borderRadius:5,background:isWin?C.gold:"transparent",color:isWin?C.dark:"rgba(255,255,255,0.8)",fontWeight:isWin?900:400,fontSize:13,cursor:isMyScore?"pointer":"default",textDecoration:isMyScore&&!isWin?"underline dotted rgba(255,255,255,0.3)":"none"}}
+                              >{s}</div>
                             :<span style={{color:"rgba(255,255,255,0.15)",fontSize:11}}>–</span>
                           }
                         </td>
