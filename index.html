@@ -13,7 +13,7 @@
   <style>
     *{-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
     html,body{margin:0;padding:0;overscroll-behavior:none;-webkit-overflow-scrolling:touch;background:#1A1A2E;}
-    input,button{-webkit-appearance:none;}
+    input,button{-webkit-appearance:none;text-decoration:none;}
     :root{
       --sat:env(safe-area-inset-top,0px);
       --sab:env(safe-area-inset-bottom,0px);
@@ -569,7 +569,7 @@ function App(){
     const playerList=gameData?.players??[];
     return(
       <Screen style={{background:C.bg}}>
-        <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 24px) 20px 72px",position:"relative",overflow:"hidden"}}>
+        <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 24px) 20px 90px",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:30,color:"#fff"}}>Who are you?</div>
           <div style={{color:"rgba(255,255,255,0.8)",fontSize:14,marginTop:4}}>Tap your name to join</div>
