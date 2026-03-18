@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="MexTrain"/>
   <meta name="theme-color" content="#1A1A2E"/>
-  <title>Mexican Train</title>
+  <title>Mexican Train Game Night</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
   <style>
     *{-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
@@ -297,21 +297,30 @@ function App(){
   // ── SPLASH ─────────────────────────────────────────────────────────────────
   if(screen==="splash") return(
     <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
-      <div style={{position:"relative",width:90,height:90,marginBottom:24}}>
-        <div style={{position:"absolute",inset:0,borderRadius:22,background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <svg width="52" height="52" viewBox="0 0 100 100" fill="none">
-            <rect x="8" y="8" width="84" height="84" rx="12" fill="none" stroke="#fff" strokeWidth="6"/>
-            <line x1="50" y1="8" x2="50" y2="92" stroke="#fff" strokeWidth="4"/>
-            <circle cx="27" cy="32" r="8" fill={C.coral}/>
-            <circle cx="27" cy="54" r="8" fill={C.coral}/>
-            <circle cx="27" cy="76" r="8" fill={C.coral}/>
-            <circle cx="73" cy="36" r="8" fill={C.pink}/>
-            <circle cx="73" cy="70" r="8" fill={C.pink}/>
-          </svg>
-        </div>
+      <div style={{position:"relative",width:140,height:140,marginBottom:24}}>
+        <svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style={{width:"100%",height:"100%"}}>
+          <defs>
+            <linearGradient id="logo-gradient" x1="179.3" y1="463.6" x2="1020.7" y2="463.6" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="#FF9770"/>
+              <stop offset="1" stopColor="#FF70A6"/>
+            </linearGradient>
+          </defs>
+          <path d="M925.1,4.7H274.9c-73.8,0-133.8,60-133.8,133.8v650.2c0,73.8,60,133.8,133.8,133.8h32.6l-70.1,262.7,36.8,10.1,11.5-43.1h628.6l11.5,43.1,37-9.9-70.1-262.7h32.6c73.8,0,133.8-60,133.8-133.8V138.5c-.2-73.8-60.2-133.8-134.1-133.8ZM904,1114H296l20.4-76.4h567.2l20.4,76.4ZM326.5,999.2l20.4-76.4h506.2l20.4,76.4H326.5ZM1020.7,788.7c0,52.7-42.9,95.6-95.6,95.6H274.9c-52.7,0-95.6-42.9-95.6-95.6V138.5c0-52.7,42.9-95.6,95.6-95.6h650.2c52.7,0,95.6,42.9,95.6,95.6v650.2Z" fill="rgba(255,255,255,0.9)"/>
+          <path d="M925.1,42.9H274.9c-52.7,0-95.6,42.9-95.6,95.6v650.2c0,52.7,42.9,95.6,95.6,95.6h650.2c52.7,0,95.6-42.9,95.6-95.6V138.5c0-52.7-42.9-95.6-95.6-95.6ZM408.8,100.3h382.5v38.2h-382.5v-38.2ZM408.8,807.9c-52.7,0-95.6-42.9-95.6-95.6s42.9-95.6,95.6-95.6,95.6,42.9,95.6,95.6-42.9,95.6-95.6,95.6ZM791.2,807.9c-52.7,0-95.6-42.9-95.6-95.6s42.9-95.6,95.6-95.6,95.6,42.9,95.6,95.6-42.9,95.6-95.6,95.6ZM963.3,482.8c0,31.6-25.8,57.4-57.4,57.4H293.9c-31.6,0-57.4-25.8-57.4-57.4v-229.5c0-31.6,25.8-57.4,57.4-57.4h612.2c31.6,0,57.2,25.8,57.2,57.4v229.5Z" fill="url(#logo-gradient)"/>
+          <path d="M906.1,195.9H293.9c-31.6,0-57.4,25.8-57.4,57.4v229.5c0,31.6,25.8,57.4,57.4,57.4h611.9c31.6,0,57.4-25.8,57.4-57.4v-229.5c0-31.6-25.5-57.4-57.2-57.4ZM581,501.8h-287.1c-10.5.2-19-8.4-19-19h0v-229.5c0-10.5,8.7-19.2,19.2-19.2h286.9v267.7ZM925.3,482.8h-.2c0,10.5-8.7,19.2-19.2,19.2h-286.6V234.2h286.9c10.6,0,19.2,8.7,19.2,19.2v229.5Z" fill="rgba(255,255,255,0.9)"/>
+          <path d="M925.3,253.4v229.5h-.2c0,10.5-8.7,19.2-19.2,19.2h-286.6V234.2h286.9c10.6,0,19.2,8.7,19.2,19.2Z" fill="#fff"/>
+          <path d="M581,234.2v267.7h-287.1c-10.5.2-19-8.4-19-19h0v-229.5c0-10.5,8.7-19.2,19.2-19.2h286.9Z" fill="#fff"/>
+          <path d="M408.8,616.6c-52.7,0-95.6,42.9-95.6,95.6s42.9,95.6,95.6,95.6,95.6-42.9,95.6-95.6-42.9-95.6-95.6-95.6ZM408.8,769.7c-31.6,0-57.4-25.8-57.4-57.4s25.8-57.4,57.4-57.4,57.4,25.8,57.4,57.4-25.8,57.4-57.4,57.4Z" fill="rgba(255,255,255,0.9)"/>
+          <path d="M466.2,712.3c0,31.6-25.8,57.4-57.4,57.4s-57.4-25.8-57.4-57.4,25.8-57.4,57.4-57.4,57.4,25.8,57.4,57.4Z" fill="#FFD670"/>
+          <path d="M791.2,616.6c-52.7,0-95.6,42.9-95.6,95.6s42.9,95.6,95.6,95.6,95.6-42.9,95.6-95.6-42.9-95.6-95.6-95.6ZM791.2,769.7c-31.6,0-57.4-25.8-57.4-57.4s25.8-57.4,57.4-57.4,57.4,25.8,57.4,57.4-25.8,57.4-57.4,57.4Z" fill="rgba(255,255,255,0.9)"/>
+          <path d="M848.7,712.3c0,31.6-25.8,57.4-57.4,57.4s-57.4-25.8-57.4-57.4,25.8-57.4,57.4-57.4,57.4,25.8,57.4,57.4Z" fill="#FFD670"/>
+          <rect x="408.8" y="100.3" width="382.5" height="38.2" fill="rgba(255,255,255,0.9)"/>
+          <circle cx="428" cy="377.6" r="45.8" fill="rgba(255,255,255,0.9)"/>
+          <circle cx="779.6" cy="377.6" r="45.8" fill="rgba(255,255,255,0.9)"/>
+        </svg>
       </div>
-      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(32px,9vw,48px)",color:"#fff",lineHeight:1,marginBottom:8}}>Mexican Train</div>
-      <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,14px)",letterSpacing:3,textTransform:"uppercase",marginBottom:48}}>Dominoes Scorekeeper</div>
+      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(26px,7.5vw,40px)",color:"#fff",lineHeight:1.1,marginBottom:6,textAlign:"center"}}>Mexican Train<br/>Game Night</div>
+      <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,13px)",letterSpacing:2.5,textTransform:"uppercase",marginBottom:48}}>Scorekeeper Companion</div>
       <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:320}}>
         <button onClick={()=>setScreen("setup")} style={{...btnStyle(`linear-gradient(135deg, ${C.coral}, ${C.pink})`),fontSize:18,padding:"18px",borderRadius:50,letterSpacing:1,boxShadow:`0 8px 32px ${C.pink}55`,display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
           <IconTrain size={22} color="#fff"/> New Game
@@ -784,7 +793,7 @@ function App(){
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
           <button onClick={()=>setScreen("setup")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:30,color:"#fff"}}>📋 How to Play</div>
-          <div style={{color:"rgba(255,255,255,0.75)",fontSize:14,marginTop:4}}>Mexican Train Dominoes</div>
+          <div style={{color:"rgba(255,255,255,0.75)",fontSize:14,marginTop:4}}>Mexican Train Game Night</div>
         </div>
         <div style={{padding:"16px 14px 40px"}}>
           {sections.map((s,i)=>(
