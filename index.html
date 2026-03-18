@@ -388,7 +388,7 @@ function App(){
           <circle cx="779.6" cy="377.6" r="45.8" fill={C.dark}/>
         </svg>
       </div>
-      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(26px,7.5vw,40px)",color:"#fff",lineHeight:1.1,marginBottom:6,textAlign:"center"}}>Mexican Train Game Night</div>
+      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(28px,8vw,42px)",color:"#fff",lineHeight:1.15,marginBottom:6,textAlign:"center"}}>Mexican Train<br/>Game Night</div>
       <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,13px)",letterSpacing:2.5,textTransform:"uppercase",marginBottom:48}}>Scorekeeper Companion</div>
       <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:320}}>
         <button onClick={()=>setScreen("setup")} style={{...btnStyle(`linear-gradient(135deg, ${C.coral}, ${C.pink})`),padding:"16px 20px",borderRadius:20,boxShadow:`0 8px 32px ${C.pink}55`,display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
@@ -569,7 +569,7 @@ function App(){
     const playerList=gameData?.players??[];
     return(
       <Screen style={{background:C.bg}}>
-        <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 20px) 20px 56px",position:"relative",overflow:"hidden"}}>
+        <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 24px) 20px 72px",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:30,color:"#fff"}}>Who are you?</div>
           <div style={{color:"rgba(255,255,255,0.8)",fontSize:14,marginTop:4}}>Tap your name to join</div>
@@ -580,7 +580,7 @@ function App(){
           </button>
           {copied&&<div style={{color:"rgba(255,255,255,0.7)",fontSize:12,marginTop:6}}>Copied!</div>}
         </div>
-        <div style={{margin:"-26px 14px 0",background:"#fff",borderRadius:22,padding:"24px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
+        <div style={{margin:"-32px 14px 0",background:"#fff",borderRadius:22,padding:"28px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
           {playerList.map((name,i)=>(
             <button key={name} onClick={async()=>{
               setMyName(name);
