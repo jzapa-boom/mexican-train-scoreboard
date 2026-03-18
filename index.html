@@ -34,6 +34,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyC9KM7AL-fU-4m3jgCNozJw9nJfo3R6ZfE",
@@ -47,9 +48,10 @@
 
   const fbApp = initializeApp(firebaseConfig);
   const db = getDatabase(fbApp);
+  const auth = getAuth(fbApp);
 
   // Expose to global so the Babel script can access
-  window.__fb = { ref, set, get, onValue, update, db };
+  window.__fb = { ref, set, get, onValue, update, db, auth, signInAnonymously, onAuthStateChanged };
 
   // Signal ready
   window.__fbReady = true;
@@ -148,12 +150,22 @@ function BottomBar({children}){
   return<div style={{position:"sticky",bottom:0,paddingBottom:"calc(12px + env(safe-area-inset-bottom))",paddingTop:12,paddingLeft:"max(14px, env(safe-area-inset-left))",paddingRight:"max(14px, env(safe-area-inset-right))",background:"rgba(242,244,248,0.97)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderTop:"1px solid rgba(0,0,0,0.05)",boxSizing:"border-box",width:"100%"}}>{children}</div>;
 }
 
+// ── localStorage helper ────────────────────────────────────────────────────
+function useLS(key,initial){
+  const [val,setVal]=useState(()=>{
+    try{ const s=localStorage.getItem(key); return s?JSON.parse(s):initial; }catch{ return initial; }
+  });
+  const save=v=>{ setVal(v); try{ localStorage.setItem(key,JSON.stringify(v)); }catch{} };
+  return [val,save];
+}
+
 // ── App ────────────────────────────────────────────────────────────────────
+const fb = window.__fb;
+
 function App(){
   const [screen,setScreen]           = useState("splash");
   const [setupPlayers,setSetupPlayers] = useState([{name:""},{name:""}]);
   const [setupPip,setSetupPip]       = useState(12);
-  const [setupRounds,setSetupRounds] = useState("all");
   const [gameCode,setGameCode]       = useState("");
   const [myName,setMyName]           = useState("");
   const [gameData,setGameData]       = useState(null);
@@ -170,23 +182,60 @@ function App(){
   const [rulesFrom,setRulesFrom]       = useState('setup');
   const [isPro,setIsPro]               = useState(false);
   const [upgradeFrom,setUpgradeFrom]   = useState('splash');
+  const [houseRules,setHouseRules]     = useState({roundOrder:'desc',blankValue:0,startingTile:'draw',gameLength:'all'});
+  const [squadsTab,setSquadsTab]       = useState('squads');
+  const [squads,saveSquadsLS]          = useLS('mxt-squads',[]);
+  const [allPlayers,savePlayersLS]     = useLS('mxt-players',[]);
+  const [selectedSquad,setSelectedSquad] = useState(null);
+  const [editingSquad,setEditingSquad] = useState(null);
+  const [viewingPlayer,setViewingPlayer] = useState(null);
+  const [squadsFrom,setSquadsFrom]     = useState('splash');
+  const [currentUser,setCurrentUser]   = useState(null);
+  const [userProfile,setUserProfile]   = useState(null);
+  const [authReady,setAuthReady]       = useState(false);
+  const [welcomeName,setWelcomeName]   = useState("");
+  const [welcomeAvatar,setWelcomeAvatar] = useState(0);
+  const [addingPlayer,setAddingPlayer] = useState(false);
+  const [newPlayerName,setNewPlayerName] = useState("");
   const fileRef = useRef();
   const rulesScrollRef = useRef();
-
-  const fb = ()=>window.__fb;
+  const screenRef = useRef(screen);
+  useEffect(()=>{ screenRef.current=screen; },[screen]);
 
   // Live sync
   useEffect(()=>{
     if(!gameCode) return;
-    const unsub = fb().onValue(fb().ref(fb().db,`games/${gameCode}`), snap=>{
+    const unsub = fb.onValue(fb.ref(fb.db,`games/${gameCode}`), snap=>{
       if(snap.exists()){
         const data=snap.val();
         setGameData(data);
-        if(data.status==="done" && screen!=="gameover" && screen!=="fullboard") setScreen("gameover");
+        if(data.status==="done" && screenRef.current!=="gameover" && screenRef.current!=="fullboard") setScreen("gameover");
       }
     });
     return()=>unsub();
   },[gameCode]);
+
+  // Firebase Auth — anonymous sign-in on first launch
+  useEffect(()=>{
+    const unsub=fb.onAuthStateChanged(fb.auth,async(user)=>{
+      if(user){
+        setCurrentUser(user);
+        const snap=await fb.get(fb.ref(fb.db,`profiles/${user.uid}`));
+        if(snap.exists()){
+          const profile=snap.val();
+          setUserProfile(profile);
+          setMyName(profile.name);
+          if(profile.isPro) setIsPro(true);
+        } else {
+          setScreen('welcome');
+        }
+        setAuthReady(true);
+      } else {
+        fb.signInAnonymously(fb.auth).catch(()=>{});
+      }
+    });
+    return()=>unsub();
+  },[]);
 
   // Derived
   const startPip     = gameData?.startPip??12;
@@ -196,7 +245,9 @@ function App(){
   const getTotal     = n=>Object.values(scores[n]??{}).reduce((a,b)=>a+(b||0),0);
   const getWins      = n=>Object.values(scores[n]??{}).filter(s=>s===0).length;
   const getRound     = (n,pip)=>scores[n]?.[String(startPip-pip)]??null;
-  const ranked       = ()=>[...players].sort((a,b)=>getTotal(a)-getTotal(b));
+  // Cache totals once — used in sort, scorecard, gameover, fullboard
+  const totals       = Object.fromEntries(players.map(n=>[n,getTotal(n)]));
+  const ranked       = [...players].sort((a,b)=>totals[a]-totals[b]);
   const roundIdx     = startPip-currentRound;
 
   async function createGame(){
@@ -205,17 +256,22 @@ function App(){
     const code=genCode();
     const initScores={};
     names.forEach(n=>initScores[n]={});
-    // Build the ordered list of rounds to play
-    let allRounds=Array.from({length:setupPip+1},(_,i)=>setupPip-i); // [12,11,...,0]
-    if(setupRounds==="even") allRounds=allRounds.filter(r=>r%2===0);
-    else if(setupRounds==="odd") allRounds=allRounds.filter(r=>r%2!==0);
-    await fb().set(fb().ref(fb().db,`games/${code}`),{
+    // Build round list respecting roundOrder and gameLength
+    let allRounds=Array.from({length:setupPip+1},(_,i)=>setupPip-i); // [12..0] desc
+    if(houseRules.roundOrder==='asc') allRounds=[...allRounds].reverse(); // [0..12]
+    if(houseRules.gameLength==='6') allRounds=allRounds.slice(0,6);
+    else if(houseRules.gameLength==='3') allRounds=allRounds.slice(0,3);
+    const playerUids={};
+    if(currentUser) playerUids[names[0]]=currentUser.uid;
+    await fb.set(fb.ref(fb.db,`games/${code}`),{
       startPip:setupPip,
       currentRound:allRounds[0],
       roundsList:allRounds,
-      roundsMode:setupRounds,
       status:"active",players:names,
-      scores:initScores,createdAt:Date.now(),
+      scores:initScores,
+      houseRules:houseRules,
+      playerUids:playerUids,
+      createdAt:Date.now(),
     });
     setGameCode(code);
     setScreen("pickname");
@@ -224,7 +280,7 @@ function App(){
   async function lookupGame(){
     const code=joinInput.toUpperCase().trim();
     if(code.length!==4){setJoinError("Enter the 4-letter game code");return;}
-    const snap=await fb().get(fb().ref(fb().db,`games/${code}`));
+    const snap=await fb.get(fb.ref(fb.db,`games/${code}`));
     if(!snap.exists()){setJoinError("Game not found — check the code");return;}
     const data=snap.val();
     if(data.status==="done"){setJoinError("That game has already ended");return;}
@@ -250,14 +306,15 @@ function App(){
         else updates[`games/${gameCode}/status`]="done";
       }
     }
-    await fb().update(fb().ref(fb().db),updates);
+    await fb.update(fb.ref(fb.db),updates);
     setSelected({});setCameraScore(null);setEditingRound(null);
     setScreen("scorecard");
   }
 
   function calcScore(){
+    const blankVal=gameData?.houseRules?.blankValue??50;
     return Object.entries(selected).reduce((s,[v,c])=>{
-      const pipVal=Number(v)===0?50:Number(v);
+      const pipVal=Number(v)===0?blankVal:Number(v);
       return s+pipVal*c;
     },0);
   }
@@ -332,7 +389,7 @@ function App(){
         </svg>
       </div>
       <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(26px,7.5vw,40px)",color:"#fff",lineHeight:1.1,marginBottom:6,textAlign:"center"}}>Mexican Train Game Night</div>
-      <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,13px)",letterSpacing:2.5,textTransform:"uppercase",marginBottom:48}}>Dominoes Scorekeeper · Companion App</div>
+      <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,13px)",letterSpacing:2.5,textTransform:"uppercase",marginBottom:48}}>Scorekeeper Companion</div>
       <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:320}}>
         <button onClick={()=>setScreen("setup")} style={{...btnStyle(`linear-gradient(135deg, ${C.coral}, ${C.pink})`),padding:"16px 20px",borderRadius:20,boxShadow:`0 8px 32px ${C.pink}55`,display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
           <IconTrain size={26} color="#fff"/>
@@ -393,11 +450,6 @@ function App(){
   // ── SETUP ──────────────────────────────────────────────────────────────────
   if(screen==="setup"){
     const playerNames=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
-    const roundsPreview={
-      all: setupPip===12?"12→11→…→0":setupPip===9?"9→8→…→0":"6→5→…→0",
-      even: setupPip===12?"12,10,8,6,4,2,0":setupPip===9?"8,6,4,2,0":"6,4,2,0",
-      odd: setupPip===12?"11,9,7,5,3,1":setupPip===9?"9,7,5,3,1":"5,3,1",
-    };
     return(
       <Screen style={{background:C.bg}}>
         <div style={{background:`linear-gradient(135deg, ${C.sky}, ${C.teal})`,padding:"calc(env(safe-area-inset-top) + 20px) 20px 56px",position:"relative",overflow:"hidden"}}>
@@ -438,22 +490,52 @@ function App(){
             })}
           </div>
 
-          {/* Rounds */}
-          <div style={{fontWeight:800,fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:0,marginBottom:12}}>Rounds</div>
-          <div style={{display:"flex",gap:8,marginBottom:6}}>
-            {[["all","All","Full game"],["even","Evens","Shorter"],["odd","Odds","Shorter"]].map(([val,label,sub])=>{
-              const active=setupRounds===val;
-              return(
-                <button key={val} onClick={()=>setSetupRounds(val)} style={{flex:1,padding:"12px 6px",borderRadius:14,border:`2.5px solid ${active?C.teal:"#eee"}`,background:active?`${C.teal}14`:"#fafafa",cursor:"pointer",fontFamily:"'Nunito',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-                  <div style={{fontWeight:800,fontSize:15,color:active?C.teal:C.dark}}>{label}</div>
-                  <div style={{fontSize:11,color:C.muted}}>{sub}</div>
+          {/* House Rules */}
+          <div style={{marginBottom:20}}>
+            <div style={{fontWeight:800,fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:0,marginBottom:2}}>House Rules</div>
+            <div style={{fontSize:12,color:C.muted,marginBottom:14}}>Settle any rule debates before you start</div>
+            {[
+              {label:"Round order", key:"roundOrder", opts:[{v:'desc',l:'12→0'},{v:'asc',l:'0→12'}]},
+              {label:"Double-blank", key:"blankValue", opts:[{v:0,l:'0 pts'},{v:50,l:'50 pts'}]},
+              {label:"Starting tile", key:"startingTile", opts:[{v:'draw',l:'Draw for it'},{v:'highest',l:'Highest goes'}]},
+              {label:"Game length", key:"gameLength", opts:[{v:'3',l:'3 rounds'},{v:'6',l:'6 rounds'},{v:'all',l:'All'}]},
+            ].map(({label,key,opts})=>(
+              <div key={key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:8}}>
+                <div style={{fontSize:14,fontWeight:700,color:C.dark,flexShrink:0}}>{label}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                  {opts.map(({v,l})=>{
+                    const active=houseRules[key]===v;
+                    return(
+                      <button key={String(v)} onClick={()=>setHouseRules(prev=>({...prev,[key]:v}))}
+                        style={{padding:"6px 12px",borderRadius:50,border:`1.5px solid ${active?C.teal:"#ddd"}`,background:active?`${C.teal}18`:"#fafafa",color:active?C.teal:C.muted,fontSize:12,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",whiteSpace:"nowrap"}}>
+                        {l}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Load a Squad */}
+          {squads.length>0&&(
+            <div style={{marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:0,marginBottom:2}}>Load a squad</div>
+              <div style={{fontSize:12,color:C.muted,marginBottom:10}}>Pre-fill players from a saved group</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                {squads.map(sq=>(
+                  <button key={sq.id} onClick={()=>setSetupPlayers(sq.members.map(n=>({name:n})))}
+                    style={{padding:"7px 14px",borderRadius:50,border:`1.5px solid ${C.teal}88`,background:`${C.teal}10`,color:C.teal,fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>
+                    {sq.name}
+                  </button>
+                ))}
+                <button onClick={()=>{setSquadsFrom('setup');setScreen('squads');}}
+                  style={{padding:"7px 14px",borderRadius:50,border:`1.5px dashed ${C.teal}`,background:"transparent",color:C.teal,fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>
+                  + Squads
                 </button>
-              );
-            })}
-          </div>
-          <div style={{fontSize:12,color:C.muted,marginBottom:24,padding:"8px 12px",background:"#f7f8fa",borderRadius:10,textAlign:"center"}}>
-            Rounds: <strong style={{color:C.dark}}>{roundsPreview[setupRounds]}</strong>
-          </div>
+              </div>
+            </div>
+          )}
 
           {/* Players */}
           <div style={{fontWeight:800,fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:0,marginBottom:10}}>Players</div>
@@ -500,7 +582,15 @@ function App(){
         </div>
         <div style={{margin:"-26px 14px 0",background:"#fff",borderRadius:22,padding:"24px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
           {playerList.map((name,i)=>(
-            <button key={name} onClick={()=>{setMyName(name);setScreen("scorecard");}} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:10,borderRadius:16,border:`2px solid ${C.sky}33`,background:`${C.sky}08`,cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
+            <button key={name} onClick={async()=>{
+              setMyName(name);
+              if(currentUser){
+                const updates={};
+                updates[`games/${gameCode}/playerUids/${name}`]=currentUser.uid;
+                await fb.update(fb.ref(fb.db),updates);
+              }
+              setScreen("scorecard");
+            }} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:10,borderRadius:16,border:`2px solid ${C.sky}33`,background:`${C.sky}08`,cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
               <Avatar name={name} idx={i} size={44}/>
               <div style={{fontWeight:800,fontSize:18,color:C.dark}}>{name}</div>
               <div style={{marginLeft:"auto",color:C.sky,fontSize:13,fontWeight:700}}>That's me →</div>
@@ -516,7 +606,7 @@ function App(){
 
   // ── SCORECARD ──────────────────────────────────────────────────────────────
   if(screen==="scorecard"&&gameData){
-    const rank=ranked();
+    const rank=ranked;
     return(
       <Screen style={{background:C.bg}}>
         <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 24px) 20px 68px",textAlign:"center",position:"relative",overflow:"hidden"}}>
@@ -538,9 +628,9 @@ function App(){
         </div>
         <div style={{padding:"0 12px",paddingBottom:"calc(100px + env(safe-area-inset-bottom))"}}>
           {rank.map((name,i)=>{
-            const total=getTotal(name),wins=getWins(name);
+            const total=totals[name],wins=getWins(name);
             const hasScore=scores[name]?.[String(roundIdx)]!=null;
-            const gap=total-getTotal(rank[0]);
+            const gap=total-totals[rank[0]];
             const isMe=name===myName;
             return(
               <div key={name} style={{background:"#fff",borderRadius:20,padding:"14px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent"}}>
@@ -598,8 +688,7 @@ function App(){
     const existingScore = editingRound !== null ? getRound(myName, editingRound) : null;
     const score=cameraScore!==null?cameraScore:calcScore();
     const tiles=Array.from({length:startPip+1},(_,i)=>i);
-    const pIdx=players.indexOf(myName);
-    return(
+    const pIdx=players.indexOf(myName);    return(
       <Screen style={{background:C.bg}}>
         <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}cc, ${C.coral})`,padding:"calc(env(safe-area-inset-top) + 18px) 18px 18px",display:"flex",alignItems:"center",gap:13}}>
           <button onClick={()=>{setEditingRound(null);setScreen("scorecard");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
@@ -630,7 +719,7 @@ function App(){
             {!isPro?(
               <>
                 <div style={{width:64,height:64,borderRadius:16,background:`${C.gold}18`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><IconCamera size={36} color={C.gold}/></div>
-                <span style={{background:`linear-gradient(135deg, ${C.gold}, ${C.coral})`,color:C.dark,borderRadius:50,padding:"3px 12px",fontSize:11,fontWeight:900,fontFamily:"'Nunito',sans-serif"}}>★ Pro feature</span>
+                <span style={{background:`linear-gradient(135deg, ${C.gold}, ${C.coral})`,color:C.dark,borderRadius:50,padding:"3px 12px",fontSize:11,fontWeight:900,fontFamily:"'Nunito',sans-serif"}}>★ Game Night+ feature</span>
                 <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:C.dark,marginTop:10,marginBottom:6}}>AI Pip Counting</div>
                 <div style={{fontSize:13,color:C.muted,marginBottom:18,lineHeight:1.55}}>Point your camera at your remaining tiles and let AI count the pips instantly. Available with Game Night+.</div>
                 <button onClick={()=>{setUpgradeFrom('counter');setScreen('upgrade');}} style={{...btnStyle(`linear-gradient(135deg, ${C.gold}, ${C.coral})`),width:"100%",fontSize:15,padding:"14px",borderRadius:50,color:C.dark,fontWeight:900,marginBottom:10}}>★ Upgrade to Game Night+ · $3.99</button>
@@ -695,7 +784,7 @@ function App(){
 
   // ── GAME OVER ──────────────────────────────────────────────────────────────
   if(screen==="gameover"&&gameData){
-    const rank=ranked();
+    const rank=ranked;
     return(
       <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
         <div style={{fontSize:64,marginBottom:8}}>🎉</div>
@@ -709,7 +798,7 @@ function App(){
               <div style={{color:"#fff",fontWeight:800,fontSize:17}}>{name}{name===myName&&<span style={{color:C.sky,fontSize:12}}> (you)</span>}</div>
               <div style={{color:"rgba(255,255,255,0.5)",fontSize:12}}>{getWins(name)} rounds won</div>
             </div>
-            <div style={{fontFamily:"'Fredoka One',cursive",fontSize:32,color:i===0?C.gold:"#fff"}}>{getTotal(name)}</div>
+            <div style={{fontFamily:"'Fredoka One',cursive",fontSize:32,color:i===0?C.gold:"#fff"}}>{totals[name]}</div>
           </div>
         ))}
         <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:360,marginTop:24}}>
@@ -745,9 +834,9 @@ function App(){
 
   // ── FULL SCOREBOARD ────────────────────────────────────────────────────────
   if(screen==="fullboard"&&gameData){
-    const rank=ranked();
+    const rank=ranked;
     const roundPips=Array.from({length:startPip+1},(_,i)=>startPip-i);
-    const grandTotal=players.reduce((s,n)=>s+getTotal(n),0);
+    const grandTotal=players.reduce((s,n)=>s+(totals[n]||0),0);
     return(
       <Screen style={{background:C.dark}}>
         <div style={{padding:"calc(env(safe-area-inset-top) + 18px) 16px 16px",display:"flex",alignItems:"center",gap:12}}>
@@ -763,7 +852,7 @@ function App(){
         </div>
         <div style={{display:"flex",gap:10,padding:"4px 12px 12px",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
           {rank.map((name,i)=>{
-            const total=getTotal(name),wins=getWins(name),leader=getTotal(rank[0]);
+            const total=totals[name],wins=getWins(name),leader=totals[rank[0]];
             return(
               <div key={name} style={{minWidth:120,borderRadius:18,padding:"12px 14px",flexShrink:0,background:i===0?`linear-gradient(135deg, ${C.coral}, ${C.pink})`:"rgba(255,255,255,0.07)",border:i===0?"none":"1px solid rgba(255,255,255,0.09)"}}>
                 <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
@@ -789,8 +878,8 @@ function App(){
             </thead>
             <tbody>
               {players.map((name,pi)=>{
-                const total=getTotal(name),wins=getWins(name),rk=ranked().indexOf(name)+1;
-                const leader=getTotal(ranked()[0]),toFirst=total-leader;
+                const total=totals[name],wins=getWins(name),rk=ranked.indexOf(name)+1;
+                const leader=totals[ranked[0]];
                 return(
                   <tr key={name} style={{background:pi%2===0?"rgba(255,255,255,0.025)":"transparent"}}>
                     <td style={{padding:"9px 12px",whiteSpace:"nowrap",position:"sticky",left:0,background:pi%2===0?"#1e1e30":"#1a1a2e",zIndex:1}}>
@@ -833,6 +922,313 @@ function App(){
             </tbody>
           </table>
         </div>
+      </Screen>
+    );
+  }
+
+  // ── WELCOME ────────────────────────────────────────────────────────────────
+  if(screen==="welcome"){
+    const canSubmit=welcomeName.trim().length>0;
+    async function saveProfile(){
+      if(!canSubmit||!currentUser) return;
+      const profile={
+        name:welcomeName.trim(),
+        avatarIdx:welcomeAvatar,
+        createdAt:Date.now(),
+        email:null,
+        isPro:false,
+        gamesPlayed:0,
+        wins:0,
+        totalScore:0,
+        gameHistory:[],
+      };
+      await fb.set(fb.ref(fb.db,`profiles/${currentUser.uid}`),profile);
+      setUserProfile(profile);
+      setMyName(profile.name);
+      setScreen("splash");
+    }
+    return(
+      <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+        <div style={{fontFamily:"'Fredoka One',cursive",fontSize:32,color:"#fff",marginBottom:6}}>Welcome!</div>
+        <div style={{color:"rgba(255,255,255,0.5)",fontSize:15,marginBottom:32}}>Let's set up your player profile</div>
+        <div style={{display:"flex",gap:10,marginBottom:28,justifyContent:"center",flexWrap:"wrap"}}>
+          {AVATAR_BG.map((bg,i)=>(
+            <div key={i} onClick={()=>setWelcomeAvatar(i)} style={{width:44,height:44,borderRadius:"50%",background:bg,cursor:"pointer",border:welcomeAvatar===i?"3px solid #fff":"3px solid transparent",boxShadow:welcomeAvatar===i?"0 0 0 2px rgba(255,255,255,0.5)":"none",transition:"all 0.15s"}}/>
+          ))}
+        </div>
+        <div style={{width:"100%",maxWidth:320,marginBottom:12}}>
+          <input
+            value={welcomeName}
+            onChange={e=>setWelcomeName(e.target.value)}
+            placeholder="Your name"
+            style={{width:"100%",padding:"16px",borderRadius:16,border:"2px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.08)",color:"#fff",fontSize:18,fontFamily:"'Nunito',sans-serif",outline:"none",textAlign:"center",boxSizing:"border-box"}}
+            onKeyDown={e=>e.key==="Enter"&&saveProfile()}
+          />
+        </div>
+        <button onClick={()=>{setUpgradeFrom('welcome');setScreen('upgrade');}} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",borderRadius:12,background:`${C.gold}18`,border:"none",cursor:"pointer",marginBottom:28}}>
+          <span style={{fontSize:14,color:C.gold}}>★</span>
+          <span style={{color:C.gold,fontSize:13,fontWeight:700,fontFamily:"'Nunito',sans-serif"}}>Game Night+ saves your stats forever —</span>
+          <span style={{color:C.gold,fontSize:13,fontWeight:900,fontFamily:"'Nunito',sans-serif",textDecoration:"underline"}}>learn more</span>
+        </button>
+        <button onClick={saveProfile} disabled={!canSubmit} style={{...btnStyle(canSubmit?`linear-gradient(135deg, ${C.teal}, #1a5f82)`:"#555"),width:"100%",maxWidth:320,fontSize:18,padding:"17px",borderRadius:50,opacity:canSubmit?1:0.5,cursor:canSubmit?"pointer":"not-allowed"}}>
+          Let's Play →
+        </button>
+      </Screen>
+    );
+  }
+
+  // ── SQUADS ─────────────────────────────────────────────────────────────────
+  if(screen==="squads"){
+    const tabs=[['squads','Squads'],['players','Players']];
+    return(
+      <Screen style={{background:C.bg,display:"flex",flexDirection:"column"}}>
+        <div style={{background:`linear-gradient(135deg, ${C.sky}, ${C.teal})`,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
+          <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
+          <button onClick={()=>setScreen(squadsFrom)} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <IconSquads size={26} color="#fff"/>
+            <div>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:"#fff",lineHeight:1}}>My Squads</div>
+              <div style={{color:"rgba(255,255,255,0.8)",fontSize:13,marginTop:2}}>Your regular game groups &amp; players</div>
+            </div>
+          </div>
+        </div>
+        {/* Tab Nav */}
+        <div style={{background:"#fff",borderBottom:"1px solid #eee",display:"flex",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
+          {tabs.map(([key,label])=>{
+            const active=squadsTab===key;
+            return(
+              <button key={key} onClick={()=>setSquadsTab(key)} style={{flex:1,padding:"13px 4px",border:"none",background:"none",cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:13,color:active?C.teal:C.muted,borderBottom:active?`3px solid ${C.teal}`:"3px solid transparent"}}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"14px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
+
+          {/* ── SQUADS TAB ── */}
+          {squadsTab==='squads'&&(
+            <div>
+              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>Your squads</div>
+              <div style={{fontSize:12,color:C.muted,marginBottom:14}}>Select a squad then tap Start Game — or tap Edit to manage members</div>
+              {squads.length===0&&(
+                <div style={{textAlign:"center",padding:"32px 16px",color:C.muted,fontSize:14}}>No squads yet. Create one below!</div>
+              )}
+              {squads.map(sq=>{
+                const isSelected=selectedSquad?.id===sq.id;
+                return(
+                  <div key={sq.id} onClick={()=>setSelectedSquad(isSelected?null:sq)} style={{background:"#fff",borderRadius:16,padding:"14px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,boxShadow:isSelected?`0 4px 20px ${C.teal}33`:"0 2px 8px rgba(0,0,0,0.05)",border:`2px solid ${isSelected?C.teal:"transparent"}`,cursor:"pointer"}}>
+                    <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSelected?C.teal:"#ddd"}`,background:isSelected?C.teal:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      {isSelected&&<div style={{width:8,height:8,borderRadius:"50%",background:"#fff"}}/>}
+                    </div>
+                    <div style={{display:"flex",marginRight:4}}>
+                      {(sq.members||[]).slice(0,4).map((m,mi)=>(
+                        <div key={mi} style={{marginLeft:mi>0?-8:0,zIndex:4-mi,position:"relative"}}>
+                          <Avatar name={m} idx={mi} size={28}/>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:800,fontSize:16,color:C.dark}}>{sq.name}</div>
+                      <div style={{fontSize:12,color:C.muted}}>{sq.members?.length||0} players{sq.lastPlayed?` · ${new Date(sq.lastPlayed).toLocaleDateString()}`:" · Never played"}</div>
+                    </div>
+                    <button onClick={e=>{e.stopPropagation();setEditingSquad({...sq});setScreen('squadedit');}} style={{background:`${C.sky}18`,border:`1px solid ${C.sky}55`,borderRadius:8,padding:"6px 12px",cursor:"pointer",color:C.teal,fontSize:12,fontWeight:800,fontFamily:"'Nunito',sans-serif",flexShrink:0}}>Edit</button>
+                  </div>
+                );
+              })}
+              <button onClick={()=>{const ns={id:Date.now(),name:"New Squad",members:[],lastPlayed:null};setEditingSquad(ns);setScreen('squadedit');}} style={{width:"100%",padding:"14px",borderRadius:14,border:`2px dashed ${C.teal}88`,background:`${C.teal}08`,color:C.teal,fontSize:14,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginTop:4}}>+ New Squad</button>
+            </div>
+          )}
+
+          {/* ── PLAYERS TAB ── */}
+          {squadsTab==='players'&&(
+            <div>
+              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>All players</div>
+              <div style={{fontSize:12,color:C.muted,marginBottom:14}}>Tap a player to view stats or edit their profile</div>
+              {allPlayers.length===0&&(
+                <div style={{textAlign:"center",padding:"32px 16px",color:C.muted,fontSize:14}}>No players yet. Add one below!</div>
+              )}
+              {allPlayers.map((pl,i)=>{
+                const plSquads=squads.filter(s=>s.members?.includes(pl.name));
+                return(
+                  <div key={pl.id||i} onClick={()=>{setViewingPlayer(pl);setScreen('profile');}} style={{background:"#fff",borderRadius:16,padding:"12px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,boxShadow:"0 2px 8px rgba(0,0,0,0.05)",cursor:"pointer"}}>
+                    <Avatar name={pl.name} idx={pl.avatarIdx??i} size={44}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:800,fontSize:16,color:C.dark}}>{pl.name}</div>
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>
+                        {plSquads.map(s=><Badge key={s.id} label={s.name} bg={C.sky}/>)}
+                      </div>
+                    </div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      <div style={{fontSize:12,color:C.muted}}>{pl.wins||0}W · avg {pl.gamesPlayed>0?Math.round((pl.totalScore||0)/pl.gamesPlayed):0}</div>
+                    </div>
+                    <div style={{color:"#ccc",fontSize:18,flexShrink:0}}>›</div>
+                  </div>
+                );
+              })}
+              {addingPlayer?(
+                <div style={{display:"flex",gap:8,marginTop:4}}>
+                  <input autoFocus value={newPlayerName} onChange={e=>setNewPlayerName(e.target.value)}
+                    placeholder="Player name"
+                    style={{flex:1,padding:"12px 14px",borderRadius:12,border:`2px solid ${C.sky}`,fontSize:15,fontFamily:"'Nunito',sans-serif",outline:"none"}}
+                    onKeyDown={e=>{
+                      if(e.key==="Enter"&&newPlayerName.trim()){
+                        const np={id:Date.now(),name:newPlayerName.trim(),avatarIdx:allPlayers.length%AVATAR_BG.length,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
+                        savePlayersLS([...allPlayers,np]); setNewPlayerName(""); setAddingPlayer(false);
+                      }
+                      if(e.key==="Escape"){setAddingPlayer(false);setNewPlayerName("");}
+                    }}
+                  />
+                  <button onClick={()=>{
+                    if(!newPlayerName.trim()) return;
+                    const np={id:Date.now(),name:newPlayerName.trim(),avatarIdx:allPlayers.length%AVATAR_BG.length,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
+                    savePlayersLS([...allPlayers,np]); setNewPlayerName(""); setAddingPlayer(false);
+                  }} style={{...btnStyle(`linear-gradient(135deg, ${C.teal}, #1a5f82)`),padding:"12px 16px",borderRadius:12,fontSize:14}}>Add</button>
+                  <button onClick={()=>{setAddingPlayer(false);setNewPlayerName("");}} style={{padding:"12px 14px",borderRadius:12,border:"2px solid #eee",background:"#fff",color:C.muted,fontSize:14,fontWeight:700,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>✕</button>
+                </div>
+              ):(
+                <button onClick={()=>setAddingPlayer(true)} style={{width:"100%",padding:"14px",borderRadius:14,border:`2px dashed ${C.sky}99`,background:`${C.sky}0a`,color:C.sky,fontSize:14,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginTop:4}}>+ Add player</button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {squadsTab==='squads'&&(
+          <BottomBar>
+            <button onClick={()=>{
+              if(!selectedSquad) return;
+              setSetupPlayers(selectedSquad.members.map(n=>({name:n})));
+              setSquadsFrom('setup');
+              setScreen('setup');
+            }} style={{...btnStyle(selectedSquad?`linear-gradient(135deg, ${C.coral}, ${C.pink})`:"#ddd"),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10,cursor:selectedSquad?"pointer":"not-allowed"}}>
+              <IconTrain size={20} color="#fff"/> {selectedSquad?`Start Game with ${selectedSquad.name}`:"Select a squad to start"}
+            </button>
+          </BottomBar>
+        )}
+      </Screen>
+    );
+  }
+
+  // ── SQUAD EDIT ─────────────────────────────────────────────────────────────
+  if(screen==="squadedit"&&editingSquad){
+    const isNew=!squads.find(s=>s.id===editingSquad.id);
+    const inSquad=editingSquad.members||[];
+    const notInSquad=allPlayers.filter(p=>!inSquad.includes(p.name));
+    return(
+      <Screen style={{background:C.bg}}>
+        <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 20px) 20px 40px",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
+          <button onClick={()=>setScreen("squads")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:"#fff"}}>{isNew?"New Squad":"Edit Squad"}</div>
+        </div>
+        <div style={{padding:"16px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
+          <div style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+            <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:8}}>Squad Name</div>
+            <input value={editingSquad.name} onChange={e=>setEditingSquad(prev=>({...prev,name:e.target.value}))}
+              style={{width:"100%",padding:"12px 14px",borderRadius:12,border:`2px solid ${C.sky}55`,fontSize:16,fontFamily:"'Nunito',sans-serif",outline:"none",boxSizing:"border-box"}}/>
+          </div>
+          {inSquad.length>0&&(
+            <div style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:10}}>Members</div>
+              {inSquad.map((name,i)=>(
+                <div key={name} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                  <Avatar name={name} idx={i} size={36}/>
+                  <div style={{flex:1,fontWeight:700,fontSize:15,color:C.dark}}>{name}</div>
+                  <button onClick={()=>setEditingSquad(prev=>({...prev,members:prev.members.filter(m=>m!==name)}))}
+                    style={{background:`${C.coral}18`,border:`1px solid ${C.coral}55`,borderRadius:8,padding:"5px 10px",cursor:"pointer",color:C.coral,fontSize:12,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>− Remove</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {notInSquad.length>0&&(
+            <div style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:10}}>Add Players</div>
+              {notInSquad.map((pl,i)=>(
+                <div key={pl.id||i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                  <Avatar name={pl.name} idx={pl.avatarIdx??i} size={36}/>
+                  <div style={{flex:1,fontWeight:700,fontSize:15,color:C.dark}}>{pl.name}</div>
+                  <button onClick={()=>setEditingSquad(prev=>({...prev,members:[...prev.members,pl.name]}))}
+                    style={{background:`${C.teal}18`,border:`1px solid ${C.teal}55`,borderRadius:8,padding:"5px 10px",cursor:"pointer",color:C.teal,fontSize:12,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>+ Add</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {!isNew&&(
+            <button onClick={()=>{
+              const updated=squads.filter(s=>s.id!==editingSquad.id);
+              saveSquadsLS(updated);
+              setEditingSquad(null);
+              setScreen('squads');
+            }} style={{width:"100%",padding:"13px",borderRadius:14,border:`1.5px solid ${C.coral}55`,background:"transparent",color:C.coral,fontSize:14,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginTop:4}}>Delete Squad</button>
+          )}
+        </div>
+        <BottomBar>
+          <button onClick={()=>{
+            const updated=isNew?[...squads,editingSquad]:squads.map(s=>s.id===editingSquad.id?editingSquad:s);
+            saveSquadsLS(updated);
+            setEditingSquad(null);
+            setScreen('squads');
+          }} style={{...btnStyle(`linear-gradient(135deg, ${C.teal}, #1a5f82)`),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+            Save Squad
+          </button>
+        </BottomBar>
+      </Screen>
+    );
+  }
+
+  // ── PLAYER PROFILE ─────────────────────────────────────────────────────────
+  if(screen==="profile"&&viewingPlayer){
+    const pl=viewingPlayer;
+    const plSquads=squads.filter(s=>s.members?.includes(pl.name));
+    const avgScore=pl.gamesPlayed>0?Math.round((pl.totalScore||0)/pl.gamesPlayed):0;
+    const pIdx=pl.avatarIdx??0;
+    return(
+      <Screen style={{background:C.bg}}>
+        <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}, ${C.coral})`,padding:"calc(env(safe-area-inset-top) + 20px) 20px 36px",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
+          <button onClick={()=>setScreen("squads")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <Avatar name={pl.name} idx={pIdx} size={54}/>
+            <div>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>{pl.name}</div>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:5}}>
+                {plSquads.map(s=><Badge key={s.id} label={s.name} bg="rgba(255,255,255,0.25)"/>)}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{padding:"16px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+            {[["Games",pl.gamesPlayed||0],["Wins",pl.wins||0],["Avg Score",avgScore]].map(([label,val])=>(
+              <div key={label} style={{background:"#fff",borderRadius:14,padding:"14px 10px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+                <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:C.dark,lineHeight:1}}>{val}</div>
+                <div style={{fontSize:11,color:C.muted,fontWeight:700,marginTop:4}}>{label}</div>
+              </div>
+            ))}
+          </div>
+          {(pl.gameHistory||[]).length>0&&(
+            <div style={{background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:10}}>Recent Games</div>
+              {(pl.gameHistory||[]).slice(-5).reverse().map((g,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingBottom:8,marginBottom:8,borderBottom:i<4?"1px solid #f0f0f0":"none"}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:14,color:C.dark}}>#{g.placement} of {g.players?.length}</div>
+                    <div style={{fontSize:12,color:C.muted}}>{new Date(g.date).toLocaleDateString()}</div>
+                  </div>
+                  <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:g.placement===1?C.gold:C.dark}}>{g.myScore} pts</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {(pl.gameHistory||[]).length===0&&(
+            <div style={{textAlign:"center",padding:"24px",color:C.muted,fontSize:14}}>No games recorded yet.</div>
+          )}
+        </div>
+        <BottomBar>
+          <button onClick={()=>{setSetupPlayers([{name:pl.name},{name:""}]);setScreen('setup');}} style={{...btnStyle(`linear-gradient(135deg, ${C.teal}, #1a5f82)`),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+            <IconTrain size={20} color="#fff"/> Start game with {pl.name} →
+          </button>
+        </BottomBar>
       </Screen>
     );
   }
@@ -1009,10 +1405,15 @@ function App(){
     );
   }
 
-  // ── Loading ────────────────────────────────────────────────────────────────
+  // ── Loading / auth gate ────────────────────────────────────────────────────
   return(
-    <Screen style={{background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:C.muted}}>Loading…</div>
+    <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+      <div style={{width:48,height:48,borderRadius:12,background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <IconTrain size={26} color="#fff"/>
+      </div>
+      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:"rgba(255,255,255,0.5)"}}>
+        {authReady?"Loading…":"Starting up…"}
+      </div>
     </Screen>
   );
 }
