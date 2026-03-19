@@ -13,7 +13,9 @@
   <style>
     *{-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
     html,body{margin:0;padding:0;overscroll-behavior:none;-webkit-overflow-scrolling:touch;background:#1A1A2E;}
-    input,button{-webkit-appearance:none;text-decoration:none;}
+    input,button{-webkit-appearance:none;text-decoration:none;-webkit-text-decoration:none;}
+    button *{text-decoration:none;-webkit-text-decoration:none;}
+    body *:not(input):not(textarea){-webkit-user-select:none;user-select:none;}
     :root{
       --sat:env(safe-area-inset-top,0px);
       --sab:env(safe-area-inset-bottom,0px);
@@ -569,8 +571,8 @@ function App(){
     const playerList=gameData?.players??[];
     return(
       <Screen style={{background:C.bg}}>
-        <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 24px) 20px 90px",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
+        <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 24px) 20px 32px",position:"relative"}}>
+          <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)",pointerEvents:"none"}}/>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:30,color:"#fff"}}>Who are you?</div>
           <div style={{color:"rgba(255,255,255,0.8)",fontSize:14,marginTop:4}}>Tap your name to join</div>
           <button onClick={copyCode} style={{display:"inline-flex",alignItems:"center",gap:8,marginTop:14,background:"rgba(255,255,255,0.2)",border:"none",borderRadius:50,padding:"6px 14px",cursor:"pointer"}}>
@@ -580,7 +582,7 @@ function App(){
           </button>
           {copied&&<div style={{color:"rgba(255,255,255,0.7)",fontSize:12,marginTop:6}}>Copied!</div>}
         </div>
-        <div style={{margin:"-32px 14px 0",background:"#fff",borderRadius:22,padding:"28px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
+        <div style={{margin:"12px 14px 0",background:"#fff",borderRadius:22,padding:"20px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
           {playerList.map((name,i)=>(
             <button key={name} onClick={async()=>{
               setMyName(name);
@@ -633,7 +635,7 @@ function App(){
             const gap=total-totals[rank[0]];
             const isMe=name===myName;
             return(
-              <div key={name} style={{background:"#fff",borderRadius:20,padding:"14px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent"}}>
+              <div key={name} style={{background:"#fff",borderRadius:20,padding:"14px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent",WebkitUserSelect:"none",userSelect:"none"}}>
                 <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:i===0?C.coral:"#bbb",width:26,flexShrink:0}}>{i+1}</div>
                 <Avatar name={name} idx={players.indexOf(name)} size={46}/>
                 <div style={{flex:1,minWidth:0}}>
