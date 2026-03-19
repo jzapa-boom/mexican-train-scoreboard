@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="MexTrain"/>
   <meta name="theme-color" content="#1A1A2E"/>
+  <meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no"/>
   <title>Mexican Train Game Night</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
   <style>
@@ -25,7 +26,7 @@
   </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root" spellcheck="false" autocorrect="off" autocomplete="off"></div>
 
 <!-- React + Babel -->
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -145,7 +146,7 @@ function Badge({label,bg=C.sky}){
 const btnStyle=(bg,extra={})=>({background:bg,color:"#fff",border:"none",borderRadius:16,padding:"15px 28px",fontSize:16,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",WebkitAppearance:"none",minHeight:48,...extra});
 
 function Screen({children,style={}}){
-  return<div style={{minHeight:"100dvh",paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)",paddingLeft:"env(safe-area-inset-left)",paddingRight:"env(safe-area-inset-right)",fontFamily:"'Nunito',sans-serif",overflowX:"hidden",...style}}>{children}</div>;
+  return<div spellCheck={false} autoCorrect="off" style={{minHeight:"100dvh",paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)",paddingLeft:"env(safe-area-inset-left)",paddingRight:"env(safe-area-inset-right)",fontFamily:"'Nunito',sans-serif",overflowX:"hidden",...style}}>{children}</div>;
 }
 
 function BottomBar({children}){
