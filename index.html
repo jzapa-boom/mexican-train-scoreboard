@@ -204,6 +204,8 @@ function App(){
   const [welcomeAvatar,setWelcomeAvatar] = useState(0);
   const [addingPlayer,setAddingPlayer] = useState(false);
   const [newPlayerName,setNewPlayerName] = useState("");
+  const [logoTaps,setLogoTaps]         = useState(0);
+  const [proToast,setProToast]         = useState(null); // 'on' | 'off' | null
   const fileRef = useRef();
   const rulesScrollRef = useRef();
   const screenRef = useRef(screen);
@@ -370,10 +372,22 @@ function App(){
     if(rulesScrollRef.current) rulesScrollRef.current.scrollTop=0;
   }
 
+  function handleLogoTap(){
+    const next=logoTaps+1;
+    setLogoTaps(next);
+    if(next>=5){
+      const newPro=!isPro;
+      setIsPro(newPro);
+      setLogoTaps(0);
+      setProToast(newPro?'on':'off');
+      setTimeout(()=>setProToast(null),2500);
+    }
+  }
+
   // ── SPLASH ─────────────────────────────────────────────────────────────────
   if(screen==="splash") return(
     <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
-      <div style={{position:"relative",width:140,height:140,marginBottom:24}}>
+      <div onClick={handleLogoTap} style={{position:"relative",width:140,height:140,marginBottom:24,cursor:"default"}}>
         <svg viewBox="0 0 1200 1200" style={{width:"100%",height:"100%"}}>
           <defs>
             <linearGradient id="logo-gradient" x1="179.3" y1="463.6" x2="1020.7" y2="463.6" gradientUnits="userSpaceOnUse">
@@ -396,7 +410,15 @@ function App(){
         </svg>
       </div>
       <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(28px,8vw,42px)",color:"#fff",lineHeight:1.15,marginBottom:6,textAlign:"center"}}>Mexican Train<br/>Game Night</div>
-      <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,13px)",letterSpacing:2.5,textTransform:"uppercase",marginBottom:48}}>Scorekeeper Companion</div>
+      <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,13px)",letterSpacing:2.5,textTransform:"uppercase",marginBottom:proToast?16:48}}>Scorekeeper Companion</div>
+      {proToast&&(
+        <div style={{background:proToast==='on'?`linear-gradient(135deg, ${C.gold}, ${C.coral})`:"rgba(255,255,255,0.15)",borderRadius:50,padding:"10px 22px",marginBottom:24,display:"flex",alignItems:"center",gap:8,boxShadow:proToast==='on'?`0 4px 20px ${C.gold}55`:"none"}}>
+          <span style={{fontSize:18}}>{proToast==='on'?'🎉':'🔒'}</span>
+          <span style={{color:proToast==='on'?C.dark:"#fff",fontWeight:900,fontSize:14,fontFamily:"'Nunito',sans-serif"}}>
+            {proToast==='on'?'Game Night+ ON — Camera unlocked':'Game Night+ OFF — Back to free'}
+          </span>
+        </div>
+      )}
       <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:320}}>
         <button onClick={()=>setScreen("setup")} style={{...btnStyle(`linear-gradient(135deg, ${C.coral}, ${C.pink})`),padding:"16px 20px",borderRadius:20,boxShadow:`0 8px 32px ${C.pink}55`,display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
           <IconTrain size={26} color="#fff"/>
