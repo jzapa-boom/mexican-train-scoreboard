@@ -85,20 +85,31 @@ const C = {
 };
 
 // ── Pip layouts ────────────────────────────────────────────────────────────
-const PIPS = {
-  0:[],
-  1:[[50,50]],
-  2:[[32,32],[68,68]],
-  3:[[32,32],[50,50],[68,68]],
-  4:[[30,30],[70,30],[30,70],[70,70]],
-  5:[[30,30],[70,30],[50,50],[30,70],[70,70]],
-  6:[[22,30],[50,30],[78,30],[22,70],[50,70],[78,70]],
-  7:[[22,18],[22,50],[22,82],[50,50],[78,18],[78,50],[78,82]],
-  8:[[22,18],[50,18],[78,18],[22,50],[78,50],[22,82],[50,82],[78,82]],
-  9:[[22,22],[50,22],[78,22],[22,50],[50,50],[78,50],[22,78],[50,78],[78,78]],
-  10:[[18,18],[18,40],[18,60],[18,82],[50,18],[50,82],[82,18],[82,40],[82,60],[82,82]],
-  11:[[18,18],[18,40],[18,60],[18,82],[50,18],[50,50],[50,82],[82,18],[82,40],[82,60],[82,82]],
-  12:[[22,13],[50,13],[78,13],[22,37],[50,37],[78,37],[22,63],[50,63],[78,63],[22,87],[50,87],[78,87]],
+// ── Domino SVG spec ────────────────────────────────────────────────────────
+// ViewBox: 0 0 213.6 126. Tile: x=38-173, y=26-94. Divider: x=105.5
+// Left pip x cols (1-9): 53.4, 71.8, 90.1  Right: 121.4, 139.8, 158.1
+// Left pip x cols (10-12): 52.3, 65.3, 78.3, 91.3  Right: 119.8, 132.8, 145.8, 158.8
+// Pip y rows (1-9): 41.6, 60, 78.3   Pip y rows (10-12): 40.5, 60, 79.5
+// Pip radius: r=6 for 0-9, r=5.4 for 10-12
+const TILE_PATH="M43.4,93.6c-3,0-5.4-2.4-5.4-5.4V31.5c0-3,2.4-5.4,5.4-5.4h124.2c3,0,5.4,2.4,5.4,5.4v56.7c0,3-2.4,5.4-5.4,5.4H43.4Z";
+const LEFT_PATH="M43.4,26 H105.5 V94 H43.4 C40.4,94,38,91.6,38,88.6 V31.4 C38,28.4,40.4,26,43.4,26 Z";
+const RIGHT_PATH="M105.5,26 H167.6 C170.6,26,173,28.4,173,31.4 V88.6 C173,91.6,170.6,94,167.6,94 H105.5 V26 Z";
+
+// Pip positions per value — [left_pips, right_pips] each as [cx,cy] in full 213.6x126 space
+const DOMINO_PIPS = {
+  0:  {L:[],R:[]},
+  1:  {L:[[71.8,60]],R:[[139.8,60]]},
+  2:  {L:[[53.4,41.6],[90.1,78.3]],R:[[121.4,41.6],[158.1,78.3]]},
+  3:  {L:[[53.4,41.6],[71.8,60],[90.1,78.3]],R:[[121.4,41.6],[139.8,60],[158.1,78.3]]},
+  4:  {L:[[53.4,41.6],[90.1,41.6],[53.4,78.3],[90.1,78.3]],R:[[121.4,41.6],[158.1,41.6],[121.4,78.3],[158.1,78.3]]},
+  5:  {L:[[53.4,41.6],[90.1,41.6],[71.8,60],[53.4,78.3],[90.1,78.3]],R:[[121.4,41.6],[158.1,41.6],[139.8,60],[121.4,78.3],[158.1,78.3]]},
+  6:  {L:[[53.4,41.6],[71.8,41.6],[90.1,41.6],[53.4,78.3],[71.8,78.3],[90.1,78.3]],R:[[121.4,41.6],[139.8,41.6],[158.1,41.6],[121.4,78.3],[139.8,78.3],[158.1,78.3]]},
+  7:  {L:[[53.4,41.6],[71.8,41.6],[90.1,41.6],[71.8,60],[53.4,78.3],[71.8,78.3],[90.1,78.3]],R:[[121.4,41.6],[139.8,41.6],[158.1,41.6],[139.8,60],[121.4,78.3],[139.8,78.3],[158.1,78.3]]},
+  8:  {L:[[53.4,41.6],[71.8,41.6],[90.1,41.6],[53.4,60],[90.1,60],[53.4,78.3],[71.8,78.3],[90.1,78.3]],R:[[121.4,41.6],[139.8,41.6],[158.1,41.6],[121.4,60],[158.1,60],[121.4,78.3],[139.8,78.3],[158.1,78.3]]},
+  9:  {L:[[53.4,41.6],[71.8,41.6],[90.1,41.6],[53.4,60],[71.8,60],[90.1,60],[53.4,78.3],[71.8,78.3],[90.1,78.3]],R:[[121.4,41.6],[139.8,41.6],[158.1,41.6],[121.4,60],[139.8,60],[158.1,60],[121.4,78.3],[139.8,78.3],[158.1,78.3]]},
+  10: {L:[[52.3,40.5],[65.3,40.5],[78.3,40.5],[91.3,40.5],[52.3,60],[91.3,60],[52.3,79.5],[65.3,79.5],[78.3,79.5],[91.3,79.5]],R:[[119.8,40.5],[132.8,40.5],[145.8,40.5],[158.8,40.5],[119.8,60],[158.8,60],[119.8,79.5],[132.8,79.5],[145.8,79.5],[158.8,79.5]]},
+  11: {L:[[52.3,40.5],[65.3,40.5],[78.3,40.5],[91.3,40.5],[52.3,60],[71.8,60],[91.3,60],[52.3,79.5],[65.3,79.5],[78.3,79.5],[91.3,79.5]],R:[[119.8,40.5],[132.8,40.5],[145.8,40.5],[158.8,40.5],[119.8,60],[139.3,60],[158.8,60],[119.8,79.5],[132.8,79.5],[145.8,79.5],[158.8,79.5]]},
+  12: {L:[[52.3,40.5],[65.3,40.5],[78.3,40.5],[91.3,40.5],[52.3,60],[65.3,60],[78.3,60],[91.3,60],[52.3,79.5],[65.3,79.5],[78.3,79.5],[91.3,79.5]],R:[[119.8,40.5],[132.8,40.5],[145.8,40.5],[158.8,40.5],[119.8,60],[132.8,60],[145.8,60],[158.8,60],[119.8,79.5],[132.8,79.5],[145.8,79.5],[158.8,79.5]]},
 };
 const PIP_COLOR = ["#1a1a1a","#000000","#7F191D","#FDE903","#747474","#3B5F24","#292875","#FBD283","#FE0005","#1B3166","#FF7E03","#2F6E29","#FF0013"];
 const AVATAR_BG = [C.sky,C.pink,C.coral,C.gold,C.lime,C.teal,"#b388ff","#ff8a65"];
@@ -116,21 +127,45 @@ function IconRules({size=20,color="currentColor"}){return<svg width={size} heigh
 function IconSquads({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" style={{display:"block",flexShrink:0}}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;}
 
 // ── Components ─────────────────────────────────────────────────────────────
+// Domino renders a single half-tile (square) using the exact SVG spec
 function Domino({value,size=80,selected=false,count=0,onClick}){
-  const pips=PIPS[value]??[];
   const pc=PIP_COLOR[value]??"#222";
   const isBlank=value===0;
-  const r=Math.max(5,size*0.1);
+  const r=value>=10?5.4:6;
+  const data=DOMINO_PIPS[value]??{L:[],R:[]};
+  // Render left half only (square tile) cropped to 38,26,67.5,68
+  const aspect=67.5/68;
+  const w=size;
+  const h=Math.round(size/aspect);
   return(
     <div onClick={onClick} style={{position:"relative",display:"inline-block",cursor:onClick?"pointer":"default",WebkitUserSelect:"none",userSelect:"none"}}>
-      <div style={{width:size,height:size,borderRadius:size*0.14,background:selected?(isBlank?"#fff8e1":"#fffaf0"):"#fff",border:`3px solid ${selected?(isBlank?C.gold:pc):"#e4e4e4"}`,boxShadow:selected?`0 0 0 3px ${isBlank?C.gold:pc}44, 0 6px 20px ${isBlank?C.gold:pc}28`:"0 2px 8px rgba(0,0,0,0.07)",display:"flex",alignItems:"center",justifyContent:"center",transition:"transform 0.12s, box-shadow 0.12s",transform:selected?"scale(1.06)":"scale(1)",minWidth:44,minHeight:44}}>
-        {isBlank
-          ?<svg width={size*0.84} height={size*0.84} viewBox="0 0 100 100"><line x1="20" y1="50" x2="80" y2="50" stroke="#bbb" strokeWidth="8" strokeLinecap="round"/></svg>
-          :<svg width={size*0.84} height={size*0.84} viewBox="0 0 100 100">{pips.map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r={r} fill={pc}/>)}</svg>
-        }
+      <div style={{width:w,height:h,background:selected?(isBlank?"#fff8e1":"#fffaf0"):"#fff",border:`3px solid ${selected?(isBlank?C.gold:pc):"#e4e4e4"}`,boxShadow:selected?`0 0 0 3px ${isBlank?C.gold:pc}44, 0 6px 20px ${isBlank?C.gold:pc}28`:"0 2px 8px rgba(0,0,0,0.07)",borderRadius:size*0.1,transition:"transform 0.12s, box-shadow 0.12s",transform:selected?"scale(1.06)":"scale(1)",minWidth:44,minHeight:44,overflow:"hidden"}}>
+        <svg width="100%" height="100%" viewBox="38 26 67.5 68" style={{display:"block"}}>
+          <path d={LEFT_PATH} fill="none" stroke="#e4e4e4" strokeWidth="0.5"/>
+          {isBlank
+            ?<line x1="48" y1="60" x2="96" y2="60" stroke="#ccc" strokeWidth="3" strokeLinecap="round"/>
+            :data.L.map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r={r} fill={pc}/>)
+          }
+        </svg>
       </div>
       {count>0&&<div style={{position:"absolute",top:-9,right:-9,width:24,height:24,borderRadius:"50%",background:C.coral,color:"#fff",fontSize:13,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(0,0,0,0.25)",border:"2px solid #fff"}}>{count}</div>}
     </div>
+  );
+}
+
+// DoubleDomino renders the full tile (both halves) for the scorecard header
+function DoubleDomino({value,height=44}){
+  const pc=PIP_COLOR[Math.min(value,12)]??"#222";
+  const r=value>=10?5.4:6;
+  const data=DOMINO_PIPS[Math.min(value,12)]??{L:[],R:[]};
+  const w=Math.round(height*(135/68));
+  return(
+    <svg width={w} height={height} viewBox="38 26 135 68" style={{display:"block"}}>
+      <path d={TILE_PATH} fill="#fff" stroke="#ddd" strokeWidth="0.6"/>
+      <line x1="105.5" y1="26" x2="105.5" y2="94" stroke="#ddd" strokeWidth="0.8"/>
+      {data.L.map(([cx,cy],i)=><circle key={"l"+i} cx={cx} cy={cy} r={r} fill={pc}/>)}
+      {data.R.map(([cx,cy],i)=><circle key={"r"+i} cx={cx} cy={cy} r={r} fill={pc}/>)}
+    </svg>
   );
 }
 
@@ -522,22 +557,11 @@ function App(){
           <div style={{fontWeight:800,fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:0,marginBottom:12}}>Domino Set</div>
           <div style={{display:"flex",gap:8,marginBottom:24}}>
             {[12,9,6].map(p=>{
-              const pc=PIP_COLOR[p]??"#333",pips=PIPS[p]??[],active=setupPip===p;
-              const tileH=38,r=Math.max(2,tileH*0.1);
+              const pc=PIP_COLOR[p]??"#333",active=setupPip===p;
               return(
                 <button key={p} onClick={()=>setSetupPip(p)} style={{flex:1,padding:"10px 6px 8px",borderRadius:14,border:`2.5px solid ${active?pc:"#eee"}`,background:active?`${pc}14`:"#fafafa",cursor:"pointer",fontFamily:"'Nunito',sans-serif",minHeight:80,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:7}}>
-                  <div style={{width:tileH*2,height:tileH,borderRadius:7,background:"#fff",border:`2px solid ${active?pc:"#ddd"}`,boxShadow:active?`0 2px 10px ${pc}33`:"0 1px 4px rgba(0,0,0,0.07)",display:"flex",alignItems:"stretch",overflow:"hidden"}}>
-                    <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                      <svg width={tileH*0.82} height={tileH*0.82} viewBox="0 0 100 100">
-                        {pips.map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r={r*2.6} fill={pc}/>)}
-                      </svg>
-                    </div>
-                    <div style={{width:2,background:active?`${pc}88`:"#ddd",flexShrink:0}}/>
-                    <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                      <svg width={tileH*0.82} height={tileH*0.82} viewBox="0 0 100 100">
-                        {pips.map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r={r*2.6} fill={pc}/>)}
-                      </svg>
-                    </div>
+                  <div style={{background:"#fff",borderRadius:6,border:`2px solid ${active?pc:"#ddd"}`,boxShadow:active?`0 2px 10px ${pc}33`:"0 1px 4px rgba(0,0,0,0.07)",padding:"3px 4px"}}>
+                    <DoubleDomino value={p} height={32}/>
                   </div>
                   <div style={{fontSize:12,fontWeight:800,color:active?pc:C.muted}}>Double-{p}</div>
                 </button>
@@ -721,7 +745,7 @@ function App(){
         </div>
         <div style={{display:"flex",justifyContent:"center",marginTop:-34,marginBottom:12,position:"relative",zIndex:2}}>
           <div style={{background:"#fff",borderRadius:18,padding:"10px 18px",boxShadow:"0 4px 20px rgba(0,0,0,0.1)"}}>
-            <Domino value={Math.min(currentRound,12)} size={60}/>
+            <DoubleDomino value={Math.min(currentRound,12)} height={44}/>
           </div>
         </div>
         <div style={{padding:"0 12px",paddingBottom:"calc(100px + env(safe-area-inset-bottom))"}}>
