@@ -374,6 +374,7 @@ function App(){
 
   function handleLogoTap(){
     logoTapsRef.current += 1;
+    console.log('logo tap', logoTapsRef.current);
     if(logoTapsRef.current >= 5){
       logoTapsRef.current = 0;
       setIsPro(prev=>{
@@ -389,7 +390,8 @@ function App(){
   if(screen==="splash") return(
     <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
       <div style={{position:"relative",width:140,height:140,marginBottom:24}}>
-        <svg onClick={handleLogoTap} viewBox="0 0 1200 1200" style={{width:"100%",height:"100%",cursor:"default",WebkitTapHighlightColor:"transparent"}}>
+        <div onPointerDown={handleLogoTap} style={{position:"absolute",inset:0,zIndex:10,borderRadius:"50%",cursor:"default"}}/>
+        <svg viewBox="0 0 1200 1200" style={{width:"100%",height:"100%"}}>
           <defs>
             <linearGradient id="logo-gradient" x1="179.3" y1="463.6" x2="1020.7" y2="463.6" gradientUnits="userSpaceOnUse">
               <stop offset="0" stopColor="#FF9770"/>
