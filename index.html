@@ -204,8 +204,8 @@ function App(){
   const [welcomeAvatar,setWelcomeAvatar] = useState(0);
   const [addingPlayer,setAddingPlayer] = useState(false);
   const [newPlayerName,setNewPlayerName] = useState("");
-  const [logoTaps,setLogoTaps]         = useState(0);
-  const [proToast,setProToast]         = useState(null); // 'on' | 'off' | null
+  const [proToast,setProToast]         = useState(null);
+  const logoTapsRef                    = useRef(0); // 'on' | 'off' | null
   const fileRef = useRef();
   const rulesScrollRef = useRef();
   const screenRef = useRef(screen);
@@ -373,22 +373,23 @@ function App(){
   }
 
   function handleLogoTap(){
-    const next=logoTaps+1;
-    setLogoTaps(next);
-    if(next>=5){
-      const newPro=!isPro;
-      setIsPro(newPro);
-      setLogoTaps(0);
-      setProToast(newPro?'on':'off');
-      setTimeout(()=>setProToast(null),2500);
+    logoTapsRef.current += 1;
+    if(logoTapsRef.current >= 5){
+      logoTapsRef.current = 0;
+      setIsPro(prev=>{
+        const newPro = !prev;
+        setProToast(newPro ? 'on' : 'off');
+        setTimeout(()=>setProToast(null), 2500);
+        return newPro;
+      });
     }
   }
 
   // ── SPLASH ─────────────────────────────────────────────────────────────────
   if(screen==="splash") return(
     <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
-      <div onClick={handleLogoTap} style={{position:"relative",width:140,height:140,marginBottom:24,cursor:"default"}}>
-        <svg viewBox="0 0 1200 1200" style={{width:"100%",height:"100%"}}>
+      <div style={{position:"relative",width:140,height:140,marginBottom:24}}>
+        <svg onClick={handleLogoTap} viewBox="0 0 1200 1200" style={{width:"100%",height:"100%",cursor:"default",WebkitTapHighlightColor:"transparent"}}>
           <defs>
             <linearGradient id="logo-gradient" x1="179.3" y1="463.6" x2="1020.7" y2="463.6" gradientUnits="userSpaceOnUse">
               <stop offset="0" stopColor="#FF9770"/>
