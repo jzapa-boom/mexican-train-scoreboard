@@ -730,7 +730,7 @@ function App(){
   if(screen==="scorecard"&&gameData){
     const rank=ranked;
     return(
-      <Screen style={{background:C.bg}}>
+      <div style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden",fontFamily:"'Nunito',sans-serif"}}>
         {/* Compact header — round number, double domino, game code in one row */}
         <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 14px) 18px 12px",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
@@ -757,7 +757,7 @@ function App(){
         <div style={{display:"flex",height:7,flexShrink:0}}>
           {[C.sky,C.pink,C.coral,C.gold,C.lime,C.teal].map((c,i)=><div key={i} style={{flex:1,background:c}}/>)}
         </div>
-        <div style={{padding:"10px 12px",paddingBottom:"calc(100px + env(safe-area-inset-bottom))",flex:1,overflowY:"auto"}}>
+        <div style={{padding:"10px 12px 4px",flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
           {rank.map((name,i)=>{
             const total=totals[name],wins=getWins(name);
             const hasScore=scores[name]?.[String(roundIdx)]!=null;
@@ -818,8 +818,8 @@ function App(){
             lower score wins · rounds scored out of {startPip}
           </div>
         </div>
-        {/* Sticky bottom bar */}
-        <div style={{position:"sticky",bottom:0,paddingBottom:"calc(12px + env(safe-area-inset-bottom))",paddingTop:12,paddingLeft:"max(14px, env(safe-area-inset-left))",paddingRight:"max(14px, env(safe-area-inset-right))",background:"rgba(242,244,248,0.97)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderTop:"1px solid rgba(0,0,0,0.05)",boxSizing:"border-box",width:"100%",flexShrink:0}}>
+        {/* Always-visible bottom bar */}
+        <div style={{paddingBottom:"calc(12px + env(safe-area-inset-bottom))",paddingTop:12,paddingLeft:"max(14px, env(safe-area-inset-left))",paddingRight:"max(14px, env(safe-area-inset-right))",background:"rgba(242,244,248,0.97)",borderTop:"1px solid rgba(0,0,0,0.05)",boxSizing:"border-box",width:"100%",flexShrink:0}}>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>setScreen("fullboard")} style={{flex:1,padding:"13px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.dark,fontWeight:800,fontSize:14,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
               <IconGrid size={18} color={C.dark}/> Scoreboard
@@ -832,7 +832,7 @@ function App(){
             </button>
           </div>
         </div>
-      </Screen>
+      </div>
     );
   }
 
