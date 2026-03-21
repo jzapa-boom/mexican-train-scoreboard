@@ -766,64 +766,72 @@ function App(){
             const allowHost=gameData?.playerPrefs?.[name]?.allowHostScore===true;
             const canScore=isMe||(isHost&&(name===gameData?.hostName||allowHost));
             return(
-              <div key={name} style={{background:"#fff",borderRadius:20,padding:"14px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent"}}>
-                <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:i===0?C.coral:"#bbb",width:26,flexShrink:0}}>{i+1}</div>
-                <Avatar name={name} idx={players.indexOf(name)} size={46}/>
+              <div key={name} style={{background:"#fff",borderRadius:20,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:10,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent"}}>
+                <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:i===0?C.coral:"#bbb",width:22,flexShrink:0}}>{i+1}</div>
+                <Avatar name={name} idx={players.indexOf(name)} size={42}/>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:800,fontSize:17,color:C.dark,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                    {name} {isMe&&<span style={{fontSize:12,color:C.sky,fontWeight:700}}>(you)</span>}
-                    {isHost&&!isMe&&<span style={{fontSize:11,color:C.coral,fontWeight:700}}> ★</span>}
+                  <div style={{fontWeight:800,fontSize:15,color:C.dark,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {name} {isMe&&<span style={{fontSize:11,color:C.sky,fontWeight:700}}>(you)</span>}
+                    {isHost&&!isMe&&<span style={{fontSize:10,color:C.coral,fontWeight:700}}> ★</span>}
                   </div>
-                  <div style={{fontSize:11,marginTop:3,display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                    <Badge label={`${wins}W`} bg={C.lime}/>
-                    {i===0?<Badge label={<span style={{display:"flex",alignItems:"center",gap:4}}><IconTrophy size={11} color={C.dark}/>Leading</span>} bg={C.gold}/>:gap>0?<Badge label={`+${gap}`} bg="#f0f0f0"/>:null}
+                  <div style={{fontSize:11,marginTop:2,display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
+                    <Badge label={wins===1?"1 win":`${wins} wins`} bg={C.lime}/>
+                    {i===0
+                      ?<Badge label="Leading" bg={C.gold}/>
+                      :gap>0?<Badge label={`${gap} behind`} bg="#f0f0f0"/>:null
+                    }
                     {isMe&&!isHost&&(
                       <button onPointerDown={()=>{
                         const updates={};
                         updates[`games/${gameCode}/playerPrefs/${myName}/allowHostScore`]=!allowHost;
                         fb.update(fb.ref(fb.db),updates);
                       }} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:`1px solid ${allowHost?C.teal:"#ddd"}`,borderRadius:50,padding:"2px 7px",cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>
-                        <div style={{width:10,height:10,borderRadius:"50%",background:allowHost?C.teal:"#ddd",flexShrink:0}}/>
+                        <div style={{width:8,height:8,borderRadius:"50%",background:allowHost?C.teal:"#ddd",flexShrink:0}}/>
                         <span style={{fontSize:10,fontWeight:700,color:allowHost?C.teal:C.muted,whiteSpace:"nowrap"}}>Host scoring</span>
                       </button>
                     )}
                   </div>
                 </div>
-                <div style={{fontFamily:"'Fredoka One',cursive",fontSize:32,color:C.dark,flexShrink:0}}>{total}</div>
-                {hasScore
-                  ? canScore
-                    ? <button onClick={()=>{
-                        setSelected({});setCameraMode(false);setCameraScore(null);
-                        setEditingRound(currentRound);setScoringFor(name);
-                        setScreen("counter");
-                      }} style={{background:`${C.teal}18`,border:`1.5px solid ${C.teal}55`,borderRadius:10,padding:"7px 11px",cursor:"pointer",display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
-                        <span style={{fontSize:16,color:C.teal}}>✓</span>
-                        <span style={{fontSize:11,color:C.teal,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Edit</span>
-                      </button>
-                    : <div style={{fontSize:22,color:C.teal,flexShrink:0}}>✓</div>
-                  : canScore
-                    ? <button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(null);setScoringFor(name);setScreen("counter");}} style={{...btnStyle(`linear-gradient(135deg, ${C.sky}, ${C.teal})`),padding:"10px 14px",fontSize:13,borderRadius:12,flexShrink:0}}>SCORE</button>
-                    : isHost&&!allowHost
-                      ? <div style={{fontSize:11,color:"#ccc",fontWeight:600,flexShrink:0,textAlign:"center",lineHeight:1.3}}>🔒<br/>locked</div>
-                      : <div style={{fontSize:12,color:"#ccc",fontWeight:600,flexShrink:0}}>waiting…</div>
-                }
+                {/* Fixed-width score column so it never shifts */}
+                <div style={{width:40,textAlign:"right",flexShrink:0,fontFamily:"'Fredoka One',cursive",fontSize:28,color:C.dark}}>{total}</div>
+                {/* Fixed-width action column */}
+                <div style={{width:64,flexShrink:0,display:"flex",justifyContent:"flex-end"}}>
+                  {hasScore
+                    ? canScore
+                      ? <button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(currentRound);setScoringFor(name);setScreen("counter");}} style={{background:`${C.teal}18`,border:`1.5px solid ${C.teal}55`,borderRadius:10,padding:"6px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+                          <span style={{fontSize:14,color:C.teal}}>✓</span>
+                          <span style={{fontSize:11,color:C.teal,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Edit</span>
+                        </button>
+                      : <div style={{fontSize:20,color:C.teal}}>✓</div>
+                    : canScore
+                      ? <button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(null);setScoringFor(name);setScreen("counter");}} style={{...btnStyle(`linear-gradient(135deg, ${C.sky}, ${C.teal})`),padding:"8px 12px",fontSize:12,borderRadius:10}}>SCORE</button>
+                      : isHost&&!allowHost
+                        ? <div style={{fontSize:10,color:"#ccc",fontWeight:600,textAlign:"center",lineHeight:1.3}}>🔒<br/>locked</div>
+                        : <div style={{fontSize:11,color:"#ccc",fontWeight:600}}>waiting…</div>
+                  }
+                </div>
               </div>
             );
           })}
+          {/* Legend */}
+          <div style={{textAlign:"center",padding:"8px 4px 4px",fontSize:12,color:C.muted,fontWeight:600}}>
+            lower score wins · rounds scored out of {startPip}
+          </div>
         </div>
-        <BottomBar>
-          <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>setScreen("fullboard")} style={{flex:1,padding:"14px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.dark,fontWeight:800,fontSize:14,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        {/* Sticky bottom bar */}
+        <div style={{position:"sticky",bottom:0,paddingBottom:"calc(12px + env(safe-area-inset-bottom))",paddingTop:12,paddingLeft:"max(14px, env(safe-area-inset-left))",paddingRight:"max(14px, env(safe-area-inset-right))",background:"rgba(242,244,248,0.97)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderTop:"1px solid rgba(0,0,0,0.05)",boxSizing:"border-box",width:"100%",flexShrink:0}}>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setScreen("fullboard")} style={{flex:1,padding:"13px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.dark,fontWeight:800,fontSize:14,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
               <IconGrid size={18} color={C.dark}/> Scoreboard
             </button>
-            <button onClick={()=>{setRulesFrom('scorecard');setRulesTab('deal');setScreen("rules");}} style={{padding:"14px 16px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.teal,fontWeight:800,fontSize:13,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
+            <button onClick={()=>{setRulesFrom('scorecard');setRulesTab('deal');setScreen("rules");}} style={{padding:"13px 16px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.teal,fontWeight:800,fontSize:13,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
               <IconRules size={16} color={C.teal}/> Rules
             </button>
-            <button onClick={()=>setScreen("splash")} style={{padding:"14px 16px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.coral,fontWeight:800,fontSize:13,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
+            <button onClick={()=>setScreen("splash")} style={{padding:"13px 16px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.coral,fontWeight:800,fontSize:13,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
               <IconRefresh size={16} color={C.coral}/> Leave
             </button>
           </div>
-        </BottomBar>
+        </div>
       </Screen>
     );
   }
