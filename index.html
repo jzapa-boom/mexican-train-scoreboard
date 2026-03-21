@@ -8,19 +8,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="MexTrain"/>
   <meta name="theme-color" content="#1A1A2E"/>
-  <meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no"/>
-  <meta http-equiv="x-rim-auto-match" content="none"/>
   <title>Mexican Train Game Night</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
   <style>
     *{-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
     html,body{margin:0;padding:0;overscroll-behavior:none;-webkit-overflow-scrolling:touch;background:#1A1A2E;}
-    input,button{-webkit-appearance:none;text-decoration:none;-webkit-text-decoration:none;}
-    button *{text-decoration:none;-webkit-text-decoration:none;}
-    body *:not(input):not(textarea){-webkit-user-select:none;user-select:none;}
-    * {text-decoration:none !important;-webkit-text-decoration:none !important;}
-    a, a:link, a:visited, a:hover {text-decoration:none !important;}
-    span, div {-webkit-touch-callout:none;}
+    input,button{-webkit-appearance:none;}
+    *{-webkit-user-select:none;user-select:none;}
+    input,textarea{-webkit-user-select:text;user-select:text;}
     :root{
       --sat:env(safe-area-inset-top,0px);
       --sab:env(safe-area-inset-bottom,0px);
@@ -30,12 +25,12 @@
   </style>
 </head>
 <body>
-<div id="root" spellcheck="false" autocorrect="off" autocomplete="off"></div>
+<div id="root"></div>
 
 <!-- React + Babel -->
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
 
 <!-- Firebase -->
 <script type="module">
@@ -150,7 +145,7 @@ function Badge({label,bg=C.sky}){
 const btnStyle=(bg,extra={})=>({background:bg,color:"#fff",border:"none",borderRadius:16,padding:"15px 28px",fontSize:16,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",WebkitAppearance:"none",minHeight:48,...extra});
 
 function Screen({children,style={}}){
-  return<div spellCheck={false} autoCorrect="off" style={{minHeight:"100dvh",paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)",paddingLeft:"env(safe-area-inset-left)",paddingRight:"env(safe-area-inset-right)",fontFamily:"'Nunito',sans-serif",overflowX:"hidden",...style}}>{children}</div>;
+  return<div style={{minHeight:"100dvh",paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)",paddingLeft:"env(safe-area-inset-left)",paddingRight:"env(safe-area-inset-right)",fontFamily:"'Nunito',sans-serif",overflowX:"hidden",...style}}>{children}</div>;
 }
 
 function BottomBar({children}){
@@ -159,10 +154,10 @@ function BottomBar({children}){
 
 // ── localStorage helper ────────────────────────────────────────────────────
 function useLS(key,initial){
-  const [val,setVal]=useState(()=>{
-    try{ const s=localStorage.getItem(key); return s?JSON.parse(s):initial; }catch{ return initial; }
+  const [val,setVal]=useState(function(){
+    try{ var s=localStorage.getItem(key); return s?JSON.parse(s):initial; }catch(e){ return initial; }
   });
-  const save=v=>{ setVal(v); try{ localStorage.setItem(key,JSON.stringify(v)); }catch{} };
+  function save(v){ setVal(v); try{ localStorage.setItem(key,JSON.stringify(v)); }catch(e){} }
   return [val,save];
 }
 
@@ -188,6 +183,7 @@ function App(){
   const [rulesTab,setRulesTab]         = useState('deal');
   const [rulesFrom,setRulesFrom]       = useState('setup');
   const [isPro,setIsPro]               = useState(false);
+  const [proToast,setProToast]         = useState(null);
   const [upgradeFrom,setUpgradeFrom]   = useState('splash');
   const [houseRules,setHouseRules]     = useState({roundOrder:'desc',blankValue:0,startingTile:'draw',gameLength:'all'});
   const [squadsTab,setSquadsTab]       = useState('squads');
@@ -204,8 +200,6 @@ function App(){
   const [welcomeAvatar,setWelcomeAvatar] = useState(0);
   const [addingPlayer,setAddingPlayer] = useState(false);
   const [newPlayerName,setNewPlayerName] = useState("");
-  const [proToast,setProToast]         = useState(null);
-  const logoTapsRef                    = useRef(0); // 'on' | 'off' | null
   const fileRef = useRef();
   const rulesScrollRef = useRef();
   const screenRef = useRef(screen);
@@ -224,7 +218,7 @@ function App(){
     return()=>unsub();
   },[gameCode]);
 
-  // Firebase Auth — anonymous sign-in on first launch
+  // Firebase Auth
   useEffect(()=>{
     const unsub=fb.onAuthStateChanged(fb.auth,async(user)=>{
       if(user){
@@ -254,7 +248,6 @@ function App(){
   const getTotal     = n=>Object.values(scores[n]??{}).reduce((a,b)=>a+(b||0),0);
   const getWins      = n=>Object.values(scores[n]??{}).filter(s=>s===0).length;
   const getRound     = (n,pip)=>scores[n]?.[String(startPip-pip)]??null;
-  // Cache totals once — used in sort, scorecard, gameover, fullboard
   const totals       = Object.fromEntries(players.map(n=>[n,getTotal(n)]));
   const ranked       = [...players].sort((a,b)=>totals[a]-totals[b]);
   const roundIdx     = startPip-currentRound;
@@ -367,30 +360,25 @@ function App(){
     setTimeout(()=>setCopied(false),2000);
   }
 
+  function togglePro(){
+    setIsPro(function(prev){
+      var next=!prev;
+      setProToast(next?'on':'off');
+      setTimeout(function(){setProToast(null);},2500);
+      return next;
+    });
+  }
+
   function switchRulesTab(tab){
     setRulesTab(tab);
     if(rulesScrollRef.current) rulesScrollRef.current.scrollTop=0;
   }
 
-  function handleLogoTap(){
-    logoTapsRef.current += 1;
-    if(logoTapsRef.current >= 5){
-      logoTapsRef.current = 0;
-      setIsPro(prev=>{
-        const newPro = !prev;
-        setProToast(newPro ? 'on' : 'off');
-        setTimeout(()=>setProToast(null), 2500);
-        return newPro;
-      });
-    }
-  }
-
   // ── SPLASH ─────────────────────────────────────────────────────────────────
   if(screen==="splash") return(
-    <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center",position:"relative"}}>
-      <button onPointerDown={()=>{setIsPro(prev=>{const n=!prev;setProToast(n?'on':'off');setTimeout(()=>setProToast(null),2500);return n;});}} style={{position:"absolute",top:"calc(env(safe-area-inset-top) + 12px)",right:16,background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:8,padding:"5px 10px",color:"rgba(255,255,255,0.5)",fontSize:11,fontWeight:700,fontFamily:"'Nunito',sans-serif",cursor:"pointer",zIndex:99}}>
-        {isPro?'PRO ✓':'DEV'}
-      </button>
+    <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+      <button onClick={togglePro} style={{position:"fixed",top:16,right:16,zIndex:999,background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:8,padding:"6px 12px",color:"rgba(255,255,255,0.6)",fontSize:11,fontWeight:700,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>{isPro?"PRO ON":"DEV"}</button>
+      {proToast&&<div style={{position:"fixed",top:52,right:16,zIndex:999,background:isPro?`${C.gold}`:"rgba(255,255,255,0.2)",borderRadius:8,padding:"6px 12px",color:isPro?C.dark:"#fff",fontSize:11,fontWeight:700,fontFamily:"'Nunito',sans-serif"}}>{isPro?"Pro ON":"Pro OFF"}</div>}
       <div style={{position:"relative",width:140,height:140,marginBottom:24}}>
         <svg viewBox="0 0 1200 1200" style={{width:"100%",height:"100%"}}>
           <defs>
@@ -413,16 +401,8 @@ function App(){
           <circle cx="779.6" cy="377.6" r="45.8" fill={C.dark}/>
         </svg>
       </div>
-      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(28px,8vw,42px)",color:"#fff",lineHeight:1.15,marginBottom:6,textAlign:"center"}}>Mexican Train<br/>Game Night</div>
-      <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,13px)",letterSpacing:2.5,textTransform:"uppercase",marginBottom:proToast?16:48}}>Scorekeeper Companion</div>
-      {proToast&&(
-        <div style={{background:proToast==='on'?`linear-gradient(135deg, ${C.gold}, ${C.coral})`:"rgba(255,255,255,0.15)",borderRadius:50,padding:"10px 22px",marginBottom:24,display:"flex",alignItems:"center",gap:8,boxShadow:proToast==='on'?`0 4px 20px ${C.gold}55`:"none"}}>
-          <span style={{fontSize:18}}>{proToast==='on'?'🎉':'🔒'}</span>
-          <span style={{color:proToast==='on'?C.dark:"#fff",fontWeight:900,fontSize:14,fontFamily:"'Nunito',sans-serif"}}>
-            {proToast==='on'?'Game Night+ ON — Camera unlocked':'Game Night+ OFF — Back to free'}
-          </span>
-        </div>
-      )}
+      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(26px,7.5vw,40px)",color:"#fff",lineHeight:1.1,marginBottom:6,textAlign:"center"}}>Mexican Train Game Night</div>
+      <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,13px)",letterSpacing:2.5,textTransform:"uppercase",marginBottom:48}}>Scorekeeper Companion</div>
       <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:320}}>
         <button onClick={()=>setScreen("setup")} style={{...btnStyle(`linear-gradient(135deg, ${C.coral}, ${C.pink})`),padding:"16px 20px",borderRadius:20,boxShadow:`0 8px 32px ${C.pink}55`,display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
           <IconTrain size={26} color="#fff"/>
@@ -663,10 +643,10 @@ function App(){
           {rank.map((name,i)=>{
             const total=totals[name],wins=getWins(name);
             const hasScore=scores[name]?.[String(roundIdx)]!=null;
-            const gap=total-totals[rank[0]];
+            const gap=total-getTotal(rank[0]);
             const isMe=name===myName;
             return(
-              <div key={name} style={{background:"#fff",borderRadius:20,padding:"14px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent",WebkitUserSelect:"none",userSelect:"none"}}>
+              <div key={name} style={{background:"#fff",borderRadius:20,padding:"14px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent"}}>
                 <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:i===0?C.coral:"#bbb",width:26,flexShrink:0}}>{i+1}</div>
                 <Avatar name={name} idx={players.indexOf(name)} size={46}/>
                 <div style={{flex:1,minWidth:0}}>
@@ -721,7 +701,8 @@ function App(){
     const existingScore = editingRound !== null ? getRound(myName, editingRound) : null;
     const score=cameraScore!==null?cameraScore:calcScore();
     const tiles=Array.from({length:startPip+1},(_,i)=>i);
-    const pIdx=players.indexOf(myName);    return(
+    const pIdx=players.indexOf(myName);
+    return(
       <Screen style={{background:C.bg}}>
         <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}cc, ${C.coral})`,padding:"calc(env(safe-area-inset-top) + 18px) 18px 18px",display:"flex",alignItems:"center",gap:13}}>
           <button onClick={()=>{setEditingRound(null);setScreen("scorecard");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
@@ -1012,6 +993,8 @@ function App(){
 
   // ── SQUADS ─────────────────────────────────────────────────────────────────
   if(screen==="squads"){
+    // saveSquads -> saveSquadsLS
+    // savePlayers -> savePlayersLS
     const tabs=[['squads','Squads'],['players','Players']];
     return(
       <Screen style={{background:C.bg,display:"flex",flexDirection:"column"}}>
@@ -1101,26 +1084,26 @@ function App(){
               })}
               {addingPlayer?(
                 <div style={{display:"flex",gap:8,marginTop:4}}>
-                  <input autoFocus value={newPlayerName} onChange={e=>setNewPlayerName(e.target.value)}
+                  <input autoFocus value={newPlayerName} onChange={function(e){setNewPlayerName(e.target.value);}}
                     placeholder="Player name"
-                    style={{flex:1,padding:"12px 14px",borderRadius:12,border:`2px solid ${C.sky}`,fontSize:15,fontFamily:"'Nunito',sans-serif",outline:"none"}}
-                    onKeyDown={e=>{
+                    style={{flex:1,padding:"12px 14px",borderRadius:12,border:`2px solid ${C.sky}`,fontSize:15,fontFamily:"'Nunito',sans-serif",outline:"none",WebkitUserSelect:"text",userSelect:"text"}}
+                    onKeyDown={function(e){
                       if(e.key==="Enter"&&newPlayerName.trim()){
-                        const np={id:Date.now(),name:newPlayerName.trim(),avatarIdx:allPlayers.length%AVATAR_BG.length,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
+                        var np={id:Date.now(),name:newPlayerName.trim(),avatarIdx:allPlayers.length%AVATAR_BG.length,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
                         savePlayersLS([...allPlayers,np]); setNewPlayerName(""); setAddingPlayer(false);
                       }
                       if(e.key==="Escape"){setAddingPlayer(false);setNewPlayerName("");}
                     }}
                   />
-                  <button onClick={()=>{
+                  <button onClick={function(){
                     if(!newPlayerName.trim()) return;
-                    const np={id:Date.now(),name:newPlayerName.trim(),avatarIdx:allPlayers.length%AVATAR_BG.length,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
+                    var np={id:Date.now(),name:newPlayerName.trim(),avatarIdx:allPlayers.length%AVATAR_BG.length,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
                     savePlayersLS([...allPlayers,np]); setNewPlayerName(""); setAddingPlayer(false);
                   }} style={{...btnStyle(`linear-gradient(135deg, ${C.teal}, #1a5f82)`),padding:"12px 16px",borderRadius:12,fontSize:14}}>Add</button>
-                  <button onClick={()=>{setAddingPlayer(false);setNewPlayerName("");}} style={{padding:"12px 14px",borderRadius:12,border:"2px solid #eee",background:"#fff",color:C.muted,fontSize:14,fontWeight:700,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>✕</button>
+                  <button onClick={function(){setAddingPlayer(false);setNewPlayerName("");}} style={{padding:"12px 14px",borderRadius:12,border:"2px solid #eee",background:"#fff",color:C.muted,fontSize:14,fontWeight:700,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>X</button>
                 </div>
               ):(
-                <button onClick={()=>setAddingPlayer(true)} style={{width:"100%",padding:"14px",borderRadius:14,border:`2px dashed ${C.sky}99`,background:`${C.sky}0a`,color:C.sky,fontSize:14,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginTop:4}}>+ Add player</button>
+                <button onClick={function(){setAddingPlayer(true);}} style={{width:"100%",padding:"14px",borderRadius:14,border:`2px dashed ${C.sky}99`,background:`${C.sky}0a`,color:C.sky,fontSize:14,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginTop:4}}>+ Add player</button>
               )}
             </div>
           )}
@@ -1144,6 +1127,7 @@ function App(){
 
   // ── SQUAD EDIT ─────────────────────────────────────────────────────────────
   if(screen==="squadedit"&&editingSquad){
+    // saveSquads -> saveSquadsLS
     const isNew=!squads.find(s=>s.id===editingSquad.id);
     const inSquad=editingSquad.members||[];
     const notInSquad=allPlayers.filter(p=>!inSquad.includes(p.name));
@@ -1197,6 +1181,7 @@ function App(){
         </div>
         <BottomBar>
           <button onClick={()=>{
+            // saveSquads2 -> saveSquadsLS
             const updated=isNew?[...squads,editingSquad]:squads.map(s=>s.id===editingSquad.id?editingSquad:s);
             saveSquadsLS(updated);
             setEditingSquad(null);
@@ -1438,14 +1423,14 @@ function App(){
     );
   }
 
-  // ── Loading / auth gate ────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
   return(
     <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
       <div style={{width:48,height:48,borderRadius:12,background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <IconTrain size={26} color="#fff"/>
       </div>
-      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:"rgba(255,255,255,0.5)"}}>
-        {authReady?"Loading…":"Starting up…"}
+      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:"rgba(255,255,255,0.4)"}}>
+        {authReady?"Loading...":"Starting up..."}
       </div>
     </Screen>
   );
