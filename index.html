@@ -9,8 +9,6 @@
   <meta name="apple-mobile-web-app-title" content="MexTrain"/>
   <meta name="theme-color" content="#1A1A2E"/>
   <title>Mexican Train Game Night</title>
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script>eruda.init();</script>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
   <style>
     *{-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
@@ -37,7 +35,7 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, set, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getDatabase, ref, set, get, onValue, update, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
   import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -55,7 +53,7 @@
   const auth = getAuth(fbApp);
 
   // Expose to global so the Babel script can access
-  window.__fb = { ref, set, get, onValue, update, db, auth, signInAnonymously, onAuthStateChanged };
+  window.__fb = { ref, set, get, onValue, update, increment, db, auth, signInAnonymously, onAuthStateChanged };
 
   // Signal ready
   window.__fbReady = true;
@@ -202,6 +200,8 @@ function App(){
   const [welcomeAvatar,setWelcomeAvatar] = useState(0);
   const [addingPlayer,setAddingPlayer] = useState(false);
   const [newPlayerName,setNewPlayerName] = useState("");
+  const [scoringFor,setScoringFor]     = useState("");
+  const [pendingClaimGame,setPendingClaimGame] = useState(null);
   const fileRef = useRef();
   const rulesScrollRef = useRef();
   const screenRef = useRef(screen);
@@ -214,7 +214,11 @@ function App(){
       if(snap.exists()){
         const data=snap.val();
         setGameData(data);
-        if(data.status==="done" && screenRef.current!=="gameover" && screenRef.current!=="fullboard") setScreen("gameover");
+        if(data.status==="done" && screenRef.current!=="gameover" && screenRef.current!=="fullboard"){
+          writeGameResults(data);
+          if(!userProfile) setPendingClaimGame(gameCode);
+          setScreen("gameover");
+        }
       }
     });
     return()=>unsub();
@@ -253,6 +257,7 @@ function App(){
   const totals       = Object.fromEntries(players.map(n=>[n,getTotal(n)]));
   const ranked       = [...players].sort((a,b)=>totals[a]-totals[b]);
   const roundIdx     = startPip-currentRound;
+  const isHost       = gameData?.hostName===myName;
 
   async function createGame(){
     const names=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
@@ -275,6 +280,7 @@ function App(){
       scores:initScores,
       houseRules:houseRules,
       playerUids:playerUids,
+      hostName:names[0],
       createdAt:Date.now(),
     });
     setGameCode(code);
@@ -296,12 +302,12 @@ function App(){
 
   async function submitScore(score){
     const targetRound = editingRound !== null ? editingRound : currentRound;
+    const targetPlayer = scoringFor || myName;
     const ridx=String(startPip-targetRound);
     const updates={};
-    updates[`games/${gameCode}/scores/${myName}/${ridx}`]=score;
-    // Only check for round advancement when submitting a fresh score (not editing a past round)
+    updates[`games/${gameCode}/scores/${targetPlayer}/${ridx}`]=score;
     if(editingRound===null){
-      const allDone=players.every(p=>p===myName?true:scores[p]?.[ridx]!=null);
+      const allDone=players.every(p=>p===targetPlayer?true:scores[p]?.[ridx]!=null);
       if(allDone){
         const roundsList=gameData?.roundsList??[];
         const currentIdx=roundsList.indexOf(currentRound);
@@ -311,8 +317,42 @@ function App(){
       }
     }
     await fb.update(fb.ref(fb.db),updates);
-    setSelected({});setCameraScore(null);setEditingRound(null);
+    setSelected({});setCameraScore(null);setEditingRound(null);setScoringFor("");
     setScreen("scorecard");
+  }
+
+  async function writeGameResults(data){
+    const finalPlayers=data.players??[];
+    const finalScores=data.scores??{};
+    const finalUids=data.playerUids??{};
+    const finalTotals=Object.fromEntries(finalPlayers.map(n=>[n,Object.values(finalScores[n]??{}).reduce((a,b)=>a+(b||0),0)]));
+    const placement=finalPlayers.slice().sort((a,b)=>finalTotals[a]-finalTotals[b]);
+    const winner=placement[0];
+    const updates={};
+    finalPlayers.forEach(function(name){
+      const uid=finalUids[name];
+      if(!uid) return;
+      const myScore=finalTotals[name]??0;
+      const myPlacement=placement.indexOf(name)+1;
+      updates[`profiles/${uid}/gamesPlayed`]=fb.increment(1);
+      if(name===winner) updates[`profiles/${uid}/wins`]=fb.increment(1);
+      updates[`profiles/${uid}/totalScore`]=fb.increment(myScore);
+    });
+    if(Object.keys(updates).length>0) await fb.update(fb.ref(fb.db),updates);
+    // Append game history entries separately (can't use increment on arrays)
+    finalPlayers.forEach(function(name){
+      const uid=finalUids[name];
+      if(!uid) return;
+      const myScore=finalTotals[name]??0;
+      const myPlacement=placement.indexOf(name)+1;
+      const historyEntry={gameCode:data.gameCode||gameCode,date:Date.now(),players:finalPlayers,myScore,placement:myPlacement};
+      fb.get(fb.ref(fb.db,`profiles/${uid}/gameHistory`)).then(function(snap){
+        const existing=snap.exists()?snap.val():[];
+        const arr=Array.isArray(existing)?existing:Object.values(existing);
+        arr.push(historyEntry);
+        fb.update(fb.ref(fb.db),{[`profiles/${uid}/gameHistory`]:arr.slice(-20)});
+      });
+    });
   }
 
   function calcScore(){
@@ -403,7 +443,7 @@ function App(){
           <circle cx="779.6" cy="377.6" r="45.8" fill={C.dark}/>
         </svg>
       </div>
-      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(26px,7.5vw,40px)",color:"#fff",lineHeight:1.1,marginBottom:6,textAlign:"center"}}>Mexican Train Game Night</div>
+      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(28px,8vw,42px)",color:"#fff",lineHeight:1.15,marginBottom:6,textAlign:"center"}}>Mexican Train<br/>Game Night</div>
       <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,13px)",letterSpacing:2.5,textTransform:"uppercase",marginBottom:48}}>Scorekeeper Companion</div>
       <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:320}}>
         <button onClick={()=>setScreen("setup")} style={{...btnStyle(`linear-gradient(135deg, ${C.coral}, ${C.pink})`),padding:"16px 20px",borderRadius:20,boxShadow:`0 8px 32px ${C.pink}55`,display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
@@ -582,6 +622,42 @@ function App(){
   // ── PICK NAME ──────────────────────────────────────────────────────────────
   if(screen==="pickname"){
     const playerList=gameData?.players??[];
+    const profileName=userProfile?.name??"";
+    const isPro=userProfile?.isPro===true;
+
+    async function claimSlot(hostName){
+      const updates={};
+      const finalName=isPro&&profileName&&profileName!==hostName?profileName:hostName;
+      // If Pro and name differs, rename slot in game
+      if(isPro&&profileName&&profileName!==hostName){
+        const updatedPlayers=playerList.map(n=>n===hostName?profileName:n);
+        const updatedScores={};
+        Object.entries(gameData.scores??{}).forEach(([k,v])=>{
+          updatedScores[k===hostName?profileName:k]=v;
+        });
+        updates[`games/${gameCode}/players`]=updatedPlayers;
+        updates[`games/${gameCode}/scores`]=updatedScores;
+      }
+      if(currentUser) updates[`games/${gameCode}/playerUids/${finalName}`]=currentUser.uid;
+      await fb.update(fb.ref(fb.db),updates);
+      setMyName(finalName);
+      setScreen("scorecard");
+    }
+
+    async function addMyselfToGame(){
+      if(!isPro||!profileName) return;
+      const updatedPlayers=[...playerList,profileName];
+      const updatedScores={...(gameData.scores??{}),[profileName]:{}};
+      const updates={
+        [`games/${gameCode}/players`]:updatedPlayers,
+        [`games/${gameCode}/scores`]:updatedScores,
+        [`games/${gameCode}/playerUids/${profileName}`]:currentUser.uid,
+      };
+      await fb.update(fb.ref(fb.db),updates);
+      setMyName(profileName);
+      setScreen("scorecard");
+    }
+
     return(
       <Screen style={{background:C.bg}}>
         <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 24px) 20px 32px",position:"relative"}}>
@@ -597,21 +673,28 @@ function App(){
         </div>
         <div style={{margin:"12px 14px 0",background:"#fff",borderRadius:22,padding:"20px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
           {playerList.map((name,i)=>(
-            <button key={name} onClick={async()=>{
-              setMyName(name);
-              if(currentUser){
-                const updates={};
-                updates[`games/${gameCode}/playerUids/${name}`]=currentUser.uid;
-                await fb.update(fb.ref(fb.db),updates);
-              }
-              setScreen("scorecard");
-            }} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:10,borderRadius:16,border:`2px solid ${C.sky}33`,background:`${C.sky}08`,cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
+            <button key={name} onClick={()=>claimSlot(name)} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:10,borderRadius:16,border:`2px solid ${C.sky}33`,background:`${C.sky}08`,cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
               <Avatar name={name} idx={i} size={44}/>
-              <div style={{fontWeight:800,fontSize:18,color:C.dark}}>{name}</div>
-              <div style={{marginLeft:"auto",color:C.sky,fontSize:13,fontWeight:700}}>That's me →</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:800,fontSize:18,color:C.dark}}>{name}</div>
+                {isPro&&profileName&&profileName!==name&&(
+                  <div style={{fontSize:11,color:C.teal,fontWeight:700,marginTop:2}}>Will join as {profileName}</div>
+                )}
+              </div>
+              <div style={{color:C.sky,fontSize:13,fontWeight:700,flexShrink:0}}>That's me →</div>
             </button>
           ))}
-          <div style={{marginTop:16,padding:"12px 16px",background:"#f7f8fa",borderRadius:12,fontSize:12,color:C.muted,textAlign:"center",lineHeight:1.5}}>
+          {isPro&&profileName&&!playerList.includes(profileName)&&(
+            <button onClick={addMyselfToGame} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:10,borderRadius:16,border:`2px solid ${C.gold}55`,background:`${C.gold}0a`,cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
+              <Avatar name={profileName} idx={7} size={44}/>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:800,fontSize:18,color:C.dark}}>{profileName}</div>
+                <div style={{fontSize:11,color:C.gold,fontWeight:700,marginTop:2}}>Game Night+ — add yourself</div>
+              </div>
+              <div style={{color:C.gold,fontSize:13,fontWeight:700,flexShrink:0}}>Join →</div>
+            </button>
+          )}
+          <div style={{marginTop:8,padding:"12px 16px",background:"#f7f8fa",borderRadius:12,fontSize:12,color:C.muted,textAlign:"center",lineHeight:1.5}}>
             Share code <strong style={{color:C.dark}}>{gameCode}</strong> so others can join from their phone
           </div>
         </div>
@@ -645,8 +728,10 @@ function App(){
           {rank.map((name,i)=>{
             const total=totals[name],wins=getWins(name);
             const hasScore=scores[name]?.[String(roundIdx)]!=null;
-            const gap=total-getTotal(rank[0]);
+            const gap=total-totals[rank[0]];
             const isMe=name===myName;
+            const allowHost=gameData?.playerPrefs?.[name]?.allowHostScore===true;
+            const canScore=isMe||(isHost&&(name===gameData?.hostName||allowHost));
             return(
               <div key={name} style={{background:"#fff",borderRadius:20,padding:"14px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent"}}>
                 <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:i===0?C.coral:"#bbb",width:26,flexShrink:0}}>{i+1}</div>
@@ -654,27 +739,40 @@ function App(){
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:800,fontSize:17,color:C.dark,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                     {name} {isMe&&<span style={{fontSize:12,color:C.sky,fontWeight:700}}>(you)</span>}
+                    {isHost&&!isMe&&<span style={{fontSize:11,color:C.coral,fontWeight:700}}> ★</span>}
                   </div>
-                  <div style={{fontSize:11,marginTop:3,display:"flex",gap:5,flexWrap:"wrap"}}>
+                  <div style={{fontSize:11,marginTop:3,display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
                     <Badge label={`${wins}W`} bg={C.lime}/>
                     {i===0?<Badge label={<span style={{display:"flex",alignItems:"center",gap:4}}><IconTrophy size={11} color={C.dark}/>Leading</span>} bg={C.gold}/>:gap>0?<Badge label={`+${gap}`} bg="#f0f0f0"/>:null}
+                    {isMe&&!isHost&&(
+                      <button onPointerDown={()=>{
+                        const updates={};
+                        updates[`games/${gameCode}/playerPrefs/${myName}/allowHostScore`]=!allowHost;
+                        fb.update(fb.ref(fb.db),updates);
+                      }} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:`1px solid ${allowHost?C.teal:"#ddd"}`,borderRadius:50,padding:"2px 7px",cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>
+                        <div style={{width:10,height:10,borderRadius:"50%",background:allowHost?C.teal:"#ddd",flexShrink:0}}/>
+                        <span style={{fontSize:10,fontWeight:700,color:allowHost?C.teal:C.muted,whiteSpace:"nowrap"}}>Host scoring</span>
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div style={{fontFamily:"'Fredoka One',cursive",fontSize:32,color:C.dark,flexShrink:0}}>{total}</div>
                 {hasScore
-                  ? isMe
+                  ? canScore
                     ? <button onClick={()=>{
                         setSelected({});setCameraMode(false);setCameraScore(null);
-                        setEditingRound(currentRound);
+                        setEditingRound(currentRound);setScoringFor(name);
                         setScreen("counter");
                       }} style={{background:`${C.teal}18`,border:`1.5px solid ${C.teal}55`,borderRadius:10,padding:"7px 11px",cursor:"pointer",display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
                         <span style={{fontSize:16,color:C.teal}}>✓</span>
                         <span style={{fontSize:11,color:C.teal,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Edit</span>
                       </button>
                     : <div style={{fontSize:22,color:C.teal,flexShrink:0}}>✓</div>
-                  :isMe
-                    ?<button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(null);setScreen("counter");}} style={{...btnStyle(`linear-gradient(135deg, ${C.sky}, ${C.teal})`),padding:"10px 14px",fontSize:13,borderRadius:12,flexShrink:0}}>SCORE</button>
-                    :<div style={{fontSize:12,color:"#ccc",fontWeight:600,flexShrink:0}}>waiting…</div>
+                  : canScore
+                    ? <button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(null);setScoringFor(name);setScreen("counter");}} style={{...btnStyle(`linear-gradient(135deg, ${C.sky}, ${C.teal})`),padding:"10px 14px",fontSize:13,borderRadius:12,flexShrink:0}}>SCORE</button>
+                    : isHost&&!allowHost
+                      ? <div style={{fontSize:11,color:"#ccc",fontWeight:600,flexShrink:0,textAlign:"center",lineHeight:1.3}}>🔒<br/>locked</div>
+                      : <div style={{fontSize:12,color:"#ccc",fontWeight:600,flexShrink:0}}>waiting…</div>
                 }
               </div>
             );
@@ -699,22 +797,25 @@ function App(){
 
   // ── COUNTER ────────────────────────────────────────────────────────────────
   if(screen==="counter"&&gameData){
+    const targetPlayer = scoringFor || myName;
     const targetRound = editingRound !== null ? editingRound : currentRound;
-    const existingScore = editingRound !== null ? getRound(myName, editingRound) : null;
+    const existingScore = editingRound !== null ? getRound(targetPlayer, editingRound) : null;
     const score=cameraScore!==null?cameraScore:calcScore();
     const tiles=Array.from({length:startPip+1},(_,i)=>i);
-    const pIdx=players.indexOf(myName);
+    const pIdx=players.indexOf(targetPlayer);
+    const scoringForOther=targetPlayer!==myName;
     return(
       <Screen style={{background:C.bg}}>
         <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}cc, ${C.coral})`,padding:"calc(env(safe-area-inset-top) + 18px) 18px 18px",display:"flex",alignItems:"center",gap:13}}>
-          <button onClick={()=>{setEditingRound(null);setScreen("scorecard");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-          <Avatar name={myName} idx={pIdx} size={48}/>
+          <button onClick={()=>{setEditingRound(null);setScoringFor("");setScreen("scorecard");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <Avatar name={targetPlayer} idx={pIdx} size={48}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:"rgba(255,255,255,0.75)",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
               Round {targetRound} · scoring for
               {editingRound!==null&&<span style={{background:"rgba(255,255,255,0.25)",borderRadius:50,padding:"2px 8px",fontSize:10,fontWeight:800,letterSpacing:0.5}}>EDITING</span>}
+              {scoringForOther&&<span style={{background:`${C.coral}55`,borderRadius:50,padding:"2px 8px",fontSize:10,fontWeight:800,letterSpacing:0.5}}>HOST</span>}
             </div>
-            <div style={{color:"#fff",fontWeight:900,fontSize:20,fontFamily:"'Fredoka One',cursive",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{myName}</div>
+            <div style={{color:"#fff",fontWeight:900,fontSize:20,fontFamily:"'Fredoka One',cursive",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{targetPlayer}</div>
           </div>
           <div style={{textAlign:"right",flexShrink:0}}>
             {editingRound!==null&&existingScore!==null&&<div style={{color:"rgba(255,255,255,0.55)",fontSize:10,fontWeight:700,textDecoration:"line-through"}}>{existingScore}</div>}
@@ -833,7 +934,7 @@ function App(){
               </div>
               <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:C.gold,lineHeight:1}}>$3.99</div>
               <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginBottom:12}}>one-time · no subscription</div>
-              <button onClick={()=>{setUpgradeFrom('gameover');setScreen('upgrade');}} style={{...btnStyle(`linear-gradient(135deg, ${C.gold}, ${C.coral})`),width:"100%",fontSize:15,padding:"14px",borderRadius:50,color:C.dark,fontWeight:900}}>Upgrade to Game Night+</button>
+              <button onClick={()=>{setPendingClaimGame(gameCode);setUpgradeFrom('gameover');setScreen('upgrade');}} style={{...btnStyle(`linear-gradient(135deg, ${C.gold}, ${C.coral})`),width:"100%",fontSize:15,padding:"14px",borderRadius:50,color:C.dark,fontWeight:900}}>Upgrade to Game Night+</button>
               <button onClick={()=>{}} style={{background:"none",border:"none",color:"rgba(255,255,255,0.35)",fontSize:13,fontWeight:600,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginTop:10,padding:"4px"}}>No thanks, skip for now</button>
             </div>
           )}
@@ -910,7 +1011,7 @@ function App(){
                         <td key={pip} style={{padding:"7px 3px",textAlign:"center"}}>
                           {s!==null
                             ?<div
-                                onClick={isMyScore?()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(pip);setScreen("counter");}:undefined}
+                                onClick={isMyScore?()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(pip);setScoringFor(name);setScreen("counter");}:undefined}
                                 style={{display:"inline-block",minWidth:26,padding:"2px 3px",borderRadius:5,background:isWin?C.gold:"transparent",color:isWin?C.dark:"rgba(255,255,255,0.8)",fontWeight:isWin?900:400,fontSize:13,cursor:isMyScore?"pointer":"default",textDecoration:isMyScore&&!isWin?"underline dotted rgba(255,255,255,0.3)":"none"}}
                               >{s}</div>
                             :<span style={{color:"rgba(255,255,255,0.15)",fontSize:11}}>–</span>
@@ -947,20 +1048,30 @@ function App(){
     const canSubmit=welcomeName.trim().length>0;
     async function saveProfile(){
       if(!canSubmit||!currentUser) return;
+      const name=welcomeName.trim();
       const profile={
-        name:welcomeName.trim(),
-        avatarIdx:welcomeAvatar,
-        createdAt:Date.now(),
-        email:null,
-        isPro:false,
-        gamesPlayed:0,
-        wins:0,
-        totalScore:0,
-        gameHistory:[],
+        name,avatarIdx:welcomeAvatar,createdAt:Date.now(),
+        email:null,isPro:false,gamesPlayed:0,wins:0,totalScore:0,gameHistory:[],
       };
       await fb.set(fb.ref(fb.db,`profiles/${currentUser.uid}`),profile);
       setUserProfile(profile);
-      setMyName(profile.name);
+      setMyName(name);
+      // Retroactive claim — if they came from a completed game, write results now
+      if(pendingClaimGame){
+        const snap=await fb.get(fb.ref(fb.db,`games/${pendingClaimGame}`));
+        if(snap.exists()){
+          const gd=snap.val();
+          // Find which player slot matches their chosen name (best-effort)
+          const matchedName=(gd.players??[]).find(p=>p.toLowerCase()===name.toLowerCase())||null;
+          if(matchedName){
+            const updates={};
+            updates[`games/${pendingClaimGame}/playerUids/${matchedName}`]=currentUser.uid;
+            await fb.update(fb.ref(fb.db),updates);
+            await writeGameResults({...gd,playerUids:{...gd.playerUids,[matchedName]:currentUser.uid}});
+          }
+        }
+        setPendingClaimGame(null);
+      }
       setScreen("splash");
     }
     return(
