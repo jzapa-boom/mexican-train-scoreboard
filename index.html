@@ -186,8 +186,39 @@ function DoubleDomino({value,height=44}){
   );
 }
 
-function Avatar({name,idx=0,size=38}){
-  return<div style={{width:size,height:size,borderRadius:"50%",flexShrink:0,background:AVATAR_BG[idx%AVATAR_BG.length],display:"flex",alignItems:"center",justifyContent:"center",color:C.dark,fontWeight:900,fontSize:Math.round(size*0.36),fontFamily:"'Fredoka One',cursive",border:"2.5px solid rgba(255,255,255,0.55)",boxShadow:"0 2px 8px rgba(0,0,0,0.13)"}}>{(name||"?").slice(0,2).toUpperCase()}</div>;
+// Extended color palette (12 colors)
+const AVATAR_COLORS = [
+  "#70D6FF","#FF70A6","#FF9770","#FFD670","#E9FF70","#2EC4B6",
+  "#b388ff","#ff8a65","#80cbc4","#f48fb1","#a5d6a7","#90caf9"
+];
+
+const AVATAR_EMOJIS = ["👑","🎯","🚂","🎲","⭐","🔥","🎭","🦁","🐉","🦊","🐺","🦋","🌵","⚡","🍀","🎸","🏆","💎","🎪","🚀","🌊","🎹","🧠","👻"];
+
+// Title badge definitions — auto-earned from stats
+const TITLE_BADGES = [
+  {id:"first_win",   icon:"🎉", name:"First Win",       desc:"Win your first game",         check:p=>p.wins>=1},
+  {id:"road_runner", icon:"🚂", name:"First Loco",      desc:"Start the Mexican Train",      check:p=>p.gamesPlayed>=1},
+  {id:"grandmaster", icon:"🏆", name:"Grandmaster",     desc:"Win 10 or more games",         check:p=>p.wins>=10},
+  {id:"on_fire",     icon:"🔥", name:"On Fire",         desc:"Win 5 games in a row",         check:p=>(p.winStreak||0)>=5},
+  {id:"comeback",    icon:"👑", name:"Comeback",        desc:"Win after being last place",   check:p=>p.comebackWins>=1},
+  {id:"veteran",     icon:"🎖️", name:"Veteran",         desc:"Play 25 games",                check:p=>p.gamesPlayed>=25},
+  {id:"centurion",   icon:"💯", name:"Centurion",       desc:"Play 100 games",               check:p=>p.gamesPlayed>=100},
+  {id:"blank_check", icon:"🎯", name:"Blank Check",     desc:"Win holding only blanks",      check:p=>p.blankWins>=1},
+];
+
+function Avatar({name,idx=0,size=38,emoji=null,photo=null,color=null}){
+  const bg=color||(AVATAR_COLORS[idx%AVATAR_COLORS.length]);
+  const fontSize=Math.round(size*(emoji?0.52:0.36));
+  const content=photo
+    ?<img src={photo} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"50%"}} alt={name}/>
+    :emoji
+      ?<span style={{fontSize,lineHeight:1,userSelect:"none"}}>{emoji}</span>
+      :<span style={{fontSize,fontFamily:"'Fredoka One',cursive",color:C.dark,userSelect:"none"}}>{(name||"?").slice(0,2).toUpperCase()}</span>;
+  return(
+    <div style={{width:size,height:size,borderRadius:"50%",flexShrink:0,background:photo?"transparent":bg,display:"flex",alignItems:"center",justifyContent:"center",border:"2.5px solid rgba(255,255,255,0.55)",boxShadow:"0 2px 8px rgba(0,0,0,0.13)",overflow:"hidden"}}>
+      {content}
+    </div>
+  );
 }
 
 function Badge({label,bg=C.sky}){
@@ -250,11 +281,13 @@ function App(){
   const [upgradeFrom,setUpgradeFrom]   = useState('splash');
   const [houseRules,setHouseRules]     = useState({roundOrder:'desc',blankValue:50,gameLength:'all'});
   const [squadsTab,setSquadsTab]       = useState('squads');
+  const [profileTab,setProfileTab]     = useState('history');
   const [squads,saveSquadsLS]          = useLS('mxt-squads',[]);
   const [allPlayers,savePlayersLS]     = useLS('mxt-players',[]);
   const [selectedSquad,setSelectedSquad] = useState(null);
   const [editingSquad,setEditingSquad] = useState(null);
   const [viewingPlayer,setViewingPlayer] = useState(null);
+  const [editingProfile,setEditingProfile] = useState(null); // draft copy during edit
   const [squadsFrom,setSquadsFrom]     = useState('splash');
   const [currentUser,setCurrentUser]   = useState(null);
   const [userProfile,setUserProfile]   = useState(null);
@@ -266,6 +299,7 @@ function App(){
   const [scoringFor,setScoringFor]     = useState("");
   const [pendingClaimGame,setPendingClaimGame] = useState(null);
   const fileRef = useRef();
+  const photoRef = useRef();
   const rulesScrollRef = useRef();
   const screenRef = useRef(screen);
   useEffect(()=>{ screenRef.current=screen; },[screen]);
@@ -418,6 +452,23 @@ function App(){
         fb.update(fb.ref(fb.db),{[`profiles/${uid}/gameHistory`]:arr.slice(-20)});
       });
     });
+  }
+
+  function goToProfile(name){
+    const pl=allPlayers.find(p=>p.name===name);
+    if(!pl) return;
+    setViewingPlayer(pl);
+    setScreen('profile');
+  }
+
+  function avatarProps(name,fallbackIdx=0){
+    const pl=allPlayers.find(p=>p.name===name);
+    return{
+      emoji:pl?.avatarEmoji||null,
+      photo:pl?.avatarPhoto||null,
+      color:pl?.avatarColor||null,
+      idx:pl?.avatarIdx??fallbackIdx,
+    };
   }
 
   function calcScore(){
@@ -804,7 +855,7 @@ function App(){
             return(
               <div key={name} style={{background:"#fff",borderRadius:20,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:10,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent"}}>
                 <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:i===0?C.coral:"#bbb",width:22,flexShrink:0}}>{i+1}</div>
-                <Avatar name={name} idx={players.indexOf(name)} size={42}/>
+                <div onClick={()=>goToProfile(name)} style={{flexShrink:0,cursor:"pointer"}}><Avatar name={name} {...avatarProps(name,players.indexOf(name))} size={42}/></div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:800,fontSize:15,color:C.dark,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                     {name} {isMe&&<span style={{fontSize:11,color:C.sky,fontWeight:700}}>(you)</span>}
@@ -885,7 +936,7 @@ function App(){
       <Screen style={{background:C.bg}}>
         <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}cc, #FF70A6)`,padding:"calc(env(safe-area-inset-top) + 18px) 18px 18px",display:"flex",alignItems:"center",gap:13}}>
           <button onClick={()=>{setEditingRound(null);setScoringFor("");setScreen("scorecard");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-          <Avatar name={targetPlayer} idx={pIdx} size={48}/>
+          <div onClick={()=>goToProfile(targetPlayer)} style={{flexShrink:0,cursor:"pointer"}}><Avatar name={targetPlayer} {...avatarProps(targetPlayer,pIdx)} size={48}/></div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:"rgba(255,255,255,0.75)",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
               Round {targetRound} · scoring for
@@ -988,7 +1039,7 @@ function App(){
         {rank.map((name,i)=>(
           <div key={name} style={{width:"100%",maxWidth:360,display:"flex",alignItems:"center",gap:14,padding:"14px 18px",marginBottom:10,borderRadius:20,background:i===0?"rgba(255,215,0,0.15)":"rgba(255,255,255,0.07)",border:i===0?`2px solid ${C.gold}44`:"1px solid rgba(255,255,255,0.09)"}}>
             <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:i===0?C.gold:"rgba(255,255,255,0.3)",width:32}}>{i===0?"🏆":i+1}</div>
-            <Avatar name={name} idx={players.indexOf(name)} size={44}/>
+            <div onClick={()=>goToProfile(name)} style={{flexShrink:0,cursor:"pointer"}}><Avatar name={name} {...avatarProps(name,players.indexOf(name))} size={44}/></div>
             <div style={{flex:1,textAlign:"left"}}>
               <div style={{color:"#fff",fontWeight:800,fontSize:17}}>{name}{name===myName&&<span style={{color:C.sky,fontSize:12}}> (you)</span>}</div>
               <div style={{color:"rgba(255,255,255,0.5)",fontSize:12}}>{getWins(name)} rounds won</div>
@@ -1051,7 +1102,7 @@ function App(){
             return(
               <div key={name} style={{minWidth:120,borderRadius:18,padding:"12px 14px",flexShrink:0,background:i===0?`linear-gradient(135deg, ${C.coral}, ${C.pink})`:"rgba(255,255,255,0.07)",border:i===0?"none":"1px solid rgba(255,255,255,0.09)"}}>
                 <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
-                  <Avatar name={name} idx={players.indexOf(name)} size={28}/>
+                  <div onClick={()=>goToProfile(name)} style={{cursor:"pointer",flexShrink:0}}><Avatar name={name} {...avatarProps(name,players.indexOf(name))} size={28}/></div>
                   <span style={{color:"#fff",fontWeight:800,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:70}}>{name}</span>
                 </div>
                 <div style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:32,lineHeight:1}}>{total}</div>
@@ -1079,7 +1130,7 @@ function App(){
                   <tr key={name} style={{background:pi%2===0?"rgba(255,255,255,0.025)":"transparent"}}>
                     <td style={{padding:"9px 12px",whiteSpace:"nowrap",position:"sticky",left:0,background:pi%2===0?"#1e1e30":"#1a1a2e",zIndex:1}}>
                       <div style={{display:"flex",alignItems:"center",gap:7}}>
-                        <Avatar name={name} idx={players.indexOf(name)} size={26}/>
+                        <div onClick={()=>goToProfile(name)} style={{cursor:"pointer",flexShrink:0}}><Avatar name={name} {...avatarProps(name,players.indexOf(name))} size={26}/></div>
                         <span style={{color:name===myName?C.sky:"#fff",fontWeight:700,fontSize:13}}>{name}</span>
                       </div>
                     </td>
@@ -1261,7 +1312,7 @@ function App(){
                 const plSquads=squads.filter(s=>s.members?.includes(pl.name));
                 return(
                   <div key={pl.id||i} onClick={()=>{setViewingPlayer(pl);setScreen('profile');}} style={{background:"#fff",borderRadius:16,padding:"12px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,boxShadow:"0 2px 8px rgba(0,0,0,0.05)",cursor:"pointer"}}>
-                    <Avatar name={pl.name} idx={pl.avatarIdx??i} size={44}/>
+                    <Avatar name={pl.name} idx={pl.avatarIdx??i} size={44} emoji={pl.avatarEmoji||null} photo={pl.avatarPhoto||null} color={pl.avatarColor||null}/>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:800,fontSize:16,color:C.dark}}>{pl.name}</div>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>
@@ -1355,7 +1406,7 @@ function App(){
               <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:10}}>Add Players</div>
               {notInSquad.map((pl,i)=>(
                 <div key={pl.id||i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                  <Avatar name={pl.name} idx={pl.avatarIdx??i} size={36}/>
+                  <Avatar name={pl.name} idx={pl.avatarIdx??i} size={36} emoji={pl.avatarEmoji||null} photo={pl.avatarPhoto||null} color={pl.avatarColor||null}/>
                   <div style={{flex:1,fontWeight:700,fontSize:15,color:C.dark}}>{pl.name}</div>
                   <button onClick={()=>setEditingSquad(prev=>({...prev,members:[...prev.members,pl.name]}))}
                     style={{background:`${C.teal}18`,border:`1px solid ${C.teal}55`,borderRadius:8,padding:"5px 10px",cursor:"pointer",color:C.teal,fontSize:12,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>+ Add</button>
@@ -1393,98 +1444,347 @@ function App(){
     const plSquads=squads.filter(s=>s.members?.includes(pl.name));
     const avgScore=pl.gamesPlayed>0?Math.round((pl.totalScore||0)/pl.gamesPlayed):0;
     const pIdx=pl.avatarIdx??0;
-    const avatarColor=AVATAR_BG[pIdx%AVATAR_BG.length];
+    const earned=TITLE_BADGES.filter(b=>b.check(pl));
+    const locked=TITLE_BADGES.filter(b=>!b.check(pl));
+    const tabs=[['history','History'],['badges','Badges'],['customize','Customize']];
     return(
-      <Screen style={{background:C.bg}}>
-        {/* Compact header */}
-        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 14px) 18px 14px"}}>
+      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",minHeight:"100dvh"}}>
+        {/* Header */}
+        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 14px) 18px 14px",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <button onClick={()=>setScreen("squads")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-            <Avatar name={pl.name} idx={pIdx} size={44}/>
+            <Avatar name={pl.name} idx={pIdx} size={44} emoji={pl.avatarEmoji||null} photo={pl.avatarPhoto||null} color={pl.avatarColor||null}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
-              {plSquads.length>0&&(
-                <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>
-                  {plSquads.map(s=><Badge key={s.id} label={s.name} bg="rgba(255,255,255,0.25)"/>)}
-                </div>
-              )}
+              {pl.tagline
+                ?<div style={{color:"rgba(255,255,255,0.75)",fontSize:12,marginTop:2}}>{pl.tagline}</div>
+                :plSquads.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>{plSquads.map(s=><Badge key={s.id} label={s.name} bg="rgba(255,255,255,0.25)"/>)}</div>
+              }
             </div>
           </div>
         </div>
         <ColorBar/>
 
-        <div style={{padding:"12px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
-
-          {/* Stats */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:12}}>
-            {[["Games",pl.gamesPlayed||0],["Wins",pl.wins||0],["Avg Score",avgScore]].map(([label,val])=>(
-              <div key={label} style={{background:"#fff",borderRadius:14,padding:"12px 10px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
-                <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:C.dark,lineHeight:1}}>{val}</div>
-                <div style={{fontSize:11,color:C.muted,fontWeight:700,marginTop:4}}>{label}</div>
+        {/* Stats bar — always visible */}
+        <div style={{background:"#fff",borderBottom:"1px solid #f0f0f0",flexShrink:0}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)"}}>
+            {[["Games",pl.gamesPlayed||0],["Wins",pl.wins||0],["Avg Score",avgScore]].map(([label,val],i)=>(
+              <div key={label} style={{padding:"12px 10px",textAlign:"center",borderRight:i<2?"1px solid #f0f0f0":"none"}}>
+                <div style={{fontFamily:"'Fredoka One',cursive",fontSize:24,color:C.dark,lineHeight:1}}>{val}</div>
+                <div style={{fontSize:11,color:C.muted,fontWeight:700,marginTop:3}}>{label}</div>
               </div>
             ))}
           </div>
-
-          {/* Recent Games */}
-          <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
-            <div style={{padding:"12px 16px",borderBottom:"1.5px solid #f0f0f0"}}>
-              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Recent Games</div>
+          {(pl.winStreak||0)>0&&(
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 16px",borderTop:"1px solid #f0f0f0"}}>
+              <span style={{fontSize:16}}>🔥</span>
+              <span style={{fontSize:12,fontWeight:800,color:C.dark}}>{pl.winStreak} win streak</span>
+              {pl.bestStreak>pl.winStreak&&<span style={{fontSize:11,color:C.muted}}>· best: {pl.bestStreak}</span>}
             </div>
-            {(pl.gameHistory||[]).length===0&&(
-              <div style={{textAlign:"center",padding:"20px",color:C.muted,fontSize:13}}>No games recorded yet.</div>
-            )}
-            {(pl.gameHistory||[]).slice(-5).reverse().map((g,i,arr)=>{
-              const isWin=g.placement===1;
-              const canView=!!g.scores;
-              return(
-                <div key={i} onClick={canView?()=>{
-                  setGameData({players:g.players,scores:g.scores,startPip:g.startPip??12,currentRound:0,status:"done"});
-                  setGameCode(g.gameCode||"");
-                  setMyName(pl.name);
-                  setScreen("fullboard");
-                }:undefined}
-                style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:i<arr.length-1?"1px solid #f0f0f0":"none",cursor:canView?"pointer":"default",background:canView?"transparent":"transparent"}}>
-                  <div>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <div style={{fontWeight:700,fontSize:14,color:C.dark}}>#{g.placement} of {g.players?.length}</div>
-                      {g.squadName&&<span style={{background:`${C.teal}18`,color:C.teal,borderRadius:50,padding:"1px 7px",fontSize:10,fontWeight:800}}>{g.squadName}</span>}
-                      {isWin&&<span style={{fontSize:12}}>🏆</span>}
+          )}
+        </div>
+
+        {/* Tab nav */}
+        <div style={{background:"#fff",borderBottom:"1px solid #eee",display:"flex",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
+          {tabs.map(([key,label])=>{
+            const active=profileTab===key;
+            return(
+              <button key={key} onClick={()=>setProfileTab(key)} style={{flex:1,padding:"13px 4px",border:"none",background:"none",cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:13,color:active?"#6c3fbf":C.muted,borderBottom:active?"3px solid #6c3fbf":"3px solid transparent",transition:"color 0.15s"}}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab content */}
+        <div style={{flex:1,overflowY:"auto",padding:"12px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
+
+          {/* ── HISTORY TAB ── */}
+          {profileTab==='history'&&(
+            <div>
+              <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+                <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0"}}>
+                  <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Recent Games</div>
+                </div>
+                {(pl.gameHistory||[]).length===0&&(
+                  <div style={{textAlign:"center",padding:"24px",color:C.muted,fontSize:13}}>No games recorded yet.</div>
+                )}
+                {(pl.gameHistory||[]).slice(-10).reverse().map((g,i,arr)=>{
+                  const isWin=g.placement===1;
+                  const canView=!!g.scores;
+                  return(
+                    <div key={i} onClick={canView?()=>{
+                      setGameData({players:g.players,scores:g.scores,startPip:g.startPip??12,currentRound:0,status:"done"});
+                      setGameCode(g.gameCode||"");
+                      setMyName(pl.name);
+                      setScreen("fullboard");
+                    }:undefined}
+                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:i<arr.length-1?"1px solid #f0f0f0":"none",cursor:canView?"pointer":"default"}}>
+                      <div>
+                        <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <div style={{fontWeight:700,fontSize:14,color:C.dark}}>#{g.placement} of {g.players?.length}</div>
+                          {g.squadName&&<span style={{background:`${C.teal}18`,color:C.teal,borderRadius:50,padding:"1px 7px",fontSize:10,fontWeight:800}}>{g.squadName}</span>}
+                          {isWin&&<span style={{fontSize:12}}>🏆</span>}
+                        </div>
+                        <div style={{fontSize:11,color:C.muted,marginTop:1}}>
+                          {new Date(g.date).toLocaleDateString()}
+                          {g.players&&<span style={{color:"#ccc"}}> · {g.players.join(", ")}</span>}
+                          {canView&&<span style={{color:C.sky,marginLeft:6}}>View →</span>}
+                        </div>
+                      </div>
+                      <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:isWin?C.gold:C.dark,flexShrink:0}}>{g.myScore} pts</div>
                     </div>
-                    <div style={{fontSize:11,color:C.muted,marginTop:1}}>
-                      {new Date(g.date).toLocaleDateString()}
-                      {g.players&&<span style={{color:"#ccc"}}> · {g.players.join(", ")}</span>}
-                      {canView&&<span style={{color:C.sky,marginLeft:6}}>View →</span>}
+                  );
+                })}
+              </div>
+              {/* Squads */}
+              <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+                <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0"}}>
+                  <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>My Squads</div>
+                </div>
+                {plSquads.length===0
+                  ?<div style={{textAlign:"center",padding:"20px",color:C.muted,fontSize:13}}>Not in any squads yet.</div>
+                  :plSquads.map((sq,i)=>(
+                    <div key={sq.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:i<plSquads.length-1?"1px solid #f0f0f0":"none"}}>
+                      <div>
+                        <div style={{fontWeight:700,fontSize:14,color:C.dark}}>{sq.name}</div>
+                        <div style={{fontSize:11,color:C.muted,marginTop:1}}>{sq.members?.join(", ")}</div>
+                      </div>
+                      <div style={{fontSize:11,color:C.muted,fontWeight:700}}>{sq.members?.length} players</div>
                     </div>
+                  ))
+                }
+              </div>
+            </div>
+          )}
+
+          {/* ── BADGES TAB ── */}
+          {profileTab==='badges'&&(
+            <div>
+              {earned.length>0&&(
+                <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+                  <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0"}}>
+                    <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Earned · {earned.length}</div>
                   </div>
-                  <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:isWin?C.gold:C.dark,flexShrink:0}}>{g.myScore} pts</div>
+                  {earned.map((b,i)=>(
+                    <div key={b.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:i<earned.length-1?"1px solid #f0f0f0":"none"}}>
+                      <div style={{width:40,height:40,borderRadius:"50%",background:`${C.teal}18`,border:`1.5px solid ${C.teal}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{b.icon}</div>
+                      <div>
+                        <div style={{fontWeight:800,fontSize:14,color:C.teal}}>{b.name}</div>
+                        <div style={{fontSize:12,color:C.muted,marginTop:1}}>{b.desc}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-
-          {/* My Squads */}
-          <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
-            <div style={{padding:"12px 16px",borderBottom:"1.5px solid #f0f0f0"}}>
-              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>My Squads</div>
+              )}
+              {locked.length>0&&(
+                <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+                  <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0"}}>
+                    <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Locked · {locked.length}</div>
+                  </div>
+                  {locked.map((b,i)=>(
+                    <div key={b.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:i<locked.length-1?"1px solid #f0f0f0":"none",opacity:0.45}}>
+                      <div style={{width:40,height:40,borderRadius:"50%",background:"#f5f5f5",border:"1.5px solid #eee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{b.icon}</div>
+                      <div>
+                        <div style={{fontWeight:800,fontSize:14,color:C.dark}}>{b.name}</div>
+                        <div style={{fontSize:12,color:C.muted,marginTop:1}}>{b.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {earned.length===0&&locked.length===0&&(
+                <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,fontSize:14}}>No badges available yet.</div>
+              )}
             </div>
-            {plSquads.length===0&&(
-              <div style={{textAlign:"center",padding:"20px",color:C.muted,fontSize:13}}>Not in any squads yet.</div>
-            )}
-            {plSquads.map((sq,i)=>(
-              <div key={sq.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:i<plSquads.length-1?"1px solid #f0f0f0":"none"}}>
-                <div>
-                  <div style={{fontWeight:700,fontSize:14,color:C.dark}}>{sq.name}</div>
-                  <div style={{fontSize:11,color:C.muted,marginTop:1}}>{sq.members?.join(", ")}</div>
+          )}
+
+          {/* ── CUSTOMIZE TAB ── */}
+          {profileTab==='customize'&&(
+            <div>
+              {/* Identity */}
+              <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+                <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0"}}>
+                  <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Identity</div>
                 </div>
-                <div style={{fontSize:11,color:C.muted,fontWeight:700}}>{sq.members?.length} players</div>
+                <div style={{padding:"0 16px"}}>
+                  <div style={{borderBottom:"1px solid #f0f0f0",padding:"10px 0"}}>
+                    <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Display name</div>
+                    <input value={pl.name} readOnly
+                      style={{width:"100%",fontSize:16,border:"none",outline:"none",fontFamily:"'Nunito',sans-serif",color:C.dark,background:"transparent"}}/>
+                  </div>
+                  <div style={{padding:"10px 0"}}>
+                    <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Tagline</div>
+                    <div style={{fontSize:13,color:pl.tagline?C.dark:C.muted}}>{pl.tagline||"None set"}</div>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+              {/* Avatar preview + edit button */}
+              <div style={{background:"#fff",borderRadius:16,padding:"16px",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12,display:"flex",alignItems:"center",gap:14}}>
+                <Avatar name={pl.name} idx={pIdx} size={56} emoji={pl.avatarEmoji||null} photo={pl.avatarPhoto||null} color={pl.avatarColor||null}/>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:800,fontSize:15,color:C.dark}}>{pl.name}</div>
+                  <div style={{fontSize:12,color:C.muted,marginTop:2}}>{pl.avatarPhoto?"Photo avatar":pl.avatarEmoji?`Emoji: ${pl.avatarEmoji}`:"Initials avatar"}</div>
+                </div>
+                <button onClick={()=>{setEditingProfile({...pl});setScreen("profileedit");}} style={{...btnStyle(GR.profile),padding:"10px 16px",fontSize:13,borderRadius:50}}>Edit</button>
+              </div>
+              {/* Color swatches preview */}
+              <div style={{background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+                <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5,marginBottom:10}}>Avatar Color</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {AVATAR_COLORS.map((c,i)=>(
+                    <div key={c} style={{width:28,height:28,borderRadius:"50%",background:c,border:`3px solid ${(pl.avatarColor===c||(!pl.avatarColor&&i===pIdx))?"#333":"transparent"}`,boxSizing:"border-box"}}/>
+                  ))}
+                </div>
+                <div style={{marginTop:10,fontSize:12,color:C.muted}}>Tap Edit to change your color, emoji, or photo.</div>
+              </div>
+            </div>
+          )}
 
         </div>
         <BottomBar>
           <button onClick={()=>{setSetupPlayers([{name:pl.name},{name:""}]);setScreen('setup');}} style={{...btnStyle(`linear-gradient(135deg, ${C.teal}, #1a5f82)`),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
             <IconTrain size={20} color="#fff"/> Start game with {pl.name} →
+          </button>
+        </BottomBar>
+      </Screen>
+    );
+  }
+
+  // ── PROFILE EDIT ───────────────────────────────────────────────────────────
+  if(screen==="profileedit"&&editingProfile){
+    const ep=editingProfile;
+    const pIdx=ep.avatarIdx??0;
+
+    function saveProfileEdit(){
+      const updated={...ep};
+      const newPlayers=allPlayers.map(p=>p.id===updated.id?updated:p);
+      savePlayersLS(newPlayers);
+      setViewingPlayer(updated);
+      setEditingProfile(null);
+      setScreen("profile");
+    }
+
+    async function handleProfilePhoto(e){
+      const file=e.target.files?.[0];
+      if(!file) return;
+      const reader=new FileReader();
+      reader.onload=()=>setEditingProfile(prev=>({...prev,avatarPhoto:reader.result,avatarEmoji:null}));
+      reader.readAsDataURL(file);
+      e.target.value="";
+    }
+
+    return(
+      <Screen style={{background:C.bg}}>
+        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 14px) 18px 14px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <button onClick={()=>{setEditingProfile(null);setScreen("profile");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+            {/* Live preview avatar */}
+            <Avatar name={ep.name} idx={pIdx} size={44} emoji={ep.avatarEmoji||null} photo={ep.avatarPhoto||null} color={ep.avatarColor||null}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:"#fff",lineHeight:1}}>Edit Profile</div>
+              <div style={{color:"rgba(255,255,255,0.7)",fontSize:12,marginTop:2}}>Changes save when you tap Save</div>
+            </div>
+          </div>
+        </div>
+        <ColorBar/>
+
+        <div style={{padding:"12px 14px",paddingBottom:"calc(100px + env(safe-area-inset-bottom))"}}>
+
+          {/* Identity */}
+          <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+            <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0"}}>
+              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Identity</div>
+            </div>
+            <div style={{padding:"0 16px"}}>
+              <div style={{borderBottom:"1px solid #f0f0f0",padding:"10px 0"}}>
+                <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Display name</div>
+                <input value={ep.name} onChange={e=>setEditingProfile(prev=>({...prev,name:e.target.value}))}
+                  style={{width:"100%",fontSize:16,border:"none",outline:"none",fontFamily:"'Nunito',sans-serif",color:C.dark,background:"transparent"}}/>
+              </div>
+              <div style={{padding:"10px 0"}}>
+                <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Tagline</div>
+                <input value={ep.tagline||""} onChange={e=>setEditingProfile(prev=>({...prev,tagline:e.target.value}))}
+                  placeholder="e.g. Always loses on 12"
+                  style={{width:"100%",fontSize:14,border:"none",outline:"none",fontFamily:"'Nunito',sans-serif",color:C.muted,background:"transparent"}}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Avatar */}
+          <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+            <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0"}}>
+              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Avatar</div>
+            </div>
+
+            {/* Color picker */}
+            <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0"}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.dark,marginBottom:8}}>Color</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {AVATAR_COLORS.map((c,i)=>(
+                  <div key={c} onClick={()=>setEditingProfile(prev=>({...prev,avatarColor:c,avatarIdx:i}))}
+                    style={{width:30,height:30,borderRadius:"50%",background:c,cursor:"pointer",border:`3px solid ${ep.avatarColor===c||(!ep.avatarColor&&i===pIdx)?"#333":"transparent"}`,boxSizing:"border-box",transition:"transform 0.1s",transform:ep.avatarColor===c?"scale(1.15)":"scale(1)"}}/>
+                ))}
+              </div>
+            </div>
+
+            {/* Emoji picker */}
+            <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0"}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.dark,marginBottom:8}}>Emoji <span style={{fontSize:11,color:C.muted,fontWeight:400}}>(replaces initials)</span></div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(8,1fr)",gap:6,marginBottom:10}}>
+                {AVATAR_EMOJIS.map(em=>(
+                  <div key={em} onClick={()=>setEditingProfile(prev=>({...prev,avatarEmoji:prev.avatarEmoji===em?null:em,avatarPhoto:null}))}
+                    style={{width:36,height:36,borderRadius:"50%",background:ep.avatarEmoji===em?`${C.teal}22`:"#f5f5f5",border:`2px solid ${ep.avatarEmoji===em?C.teal:"transparent"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,cursor:"pointer"}}>
+                    {em}
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{fontSize:12,color:C.muted,flexShrink:0}}>Or type any:</div>
+                <input value={ep.avatarEmoji||""} onChange={e=>{const v=e.target.value.slice(-2);setEditingProfile(prev=>({...prev,avatarEmoji:v||null,avatarPhoto:null}));}}
+                  placeholder="✨"
+                  style={{width:52,fontSize:22,textAlign:"center",border:`1.5px solid #eee`,borderRadius:10,padding:"4px 6px",outline:"none",fontFamily:"sans-serif"}}/>
+                {ep.avatarEmoji&&<button onClick={()=>setEditingProfile(prev=>({...prev,avatarEmoji:null}))} style={{background:"none",border:"none",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>Clear</button>}
+              </div>
+            </div>
+
+            {/* Photo upload */}
+            <div style={{padding:"12px 16px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.dark,marginBottom:8}}>
+                Photo <span style={{fontSize:10,background:C.gold,color:C.dark,borderRadius:50,padding:"1px 7px",fontWeight:800,marginLeft:4}}>Game Night+</span>
+              </div>
+              <input ref={photoRef} type="file" accept="image/*" onChange={handleProfilePhoto} style={{display:"none"}}/>
+              {ep.avatarPhoto
+                ?<div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <img src={ep.avatarPhoto} style={{width:48,height:48,borderRadius:"50%",objectFit:"cover",border:`2px solid ${C.teal}`}} alt="avatar"/>
+                    <button onClick={()=>photoRef.current.click()} style={{padding:"7px 14px",borderRadius:50,border:`1.5px solid ${C.sky}`,background:"transparent",color:C.sky,fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>Change photo</button>
+                    <button onClick={()=>setEditingProfile(prev=>({...prev,avatarPhoto:null}))} style={{padding:"7px 14px",borderRadius:50,border:"1.5px solid #eee",background:"transparent",color:C.muted,fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>Remove</button>
+                  </div>
+                :<button onClick={()=>isPro?photoRef.current.click():setScreen("upgrade")}
+                    style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${isPro?C.sky:"#eee"}`,background:`${isPro?C.sky:"#f5f5f5"}11`,cursor:"pointer",width:"100%",fontFamily:"'Nunito',sans-serif"}}>
+                    <IconCamera size={20} color={isPro?C.sky:C.muted}/>
+                    <div style={{textAlign:"left"}}>
+                      <div style={{fontSize:13,fontWeight:800,color:isPro?C.sky:C.muted}}>{isPro?"Take or upload a photo":"Unlock with Game Night+"}</div>
+                      <div style={{fontSize:11,color:C.muted}}>Replaces initials and emoji</div>
+                    </div>
+                  </button>
+              }
+            </div>
+          </div>
+
+          {/* Live preview */}
+          <div style={{background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
+            <Avatar name={ep.name} idx={pIdx} size={52} emoji={ep.avatarEmoji||null} photo={ep.avatarPhoto||null} color={ep.avatarColor||null}/>
+            <div>
+              <div style={{fontWeight:800,fontSize:16,color:C.dark}}>{ep.name||"Your name"}</div>
+              {ep.tagline&&<div style={{fontSize:12,color:C.muted,marginTop:2}}>{ep.tagline}</div>}
+            </div>
+          </div>
+
+        </div>
+        <BottomBar>
+          <button onClick={saveProfileEdit} style={{...btnStyle(GR.profile),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+            Save Profile
           </button>
         </BottomBar>
       </Screen>
