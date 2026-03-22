@@ -300,6 +300,8 @@ function App(){
   const [houseRules,setHouseRules]     = useState({roundOrder:'desc',blankValue:50,gameLength:'all'});
   const [squadsTab,setSquadsTab]       = useState('squads');
   const [profileTab,setProfileTab]     = useState('history');
+  const [selectedName,setSelectedName] = useState(null); // expanded row in pickname
+  const [pendingAllowHost,setPendingAllowHost] = useState(true); // default on
   const [squads,saveSquadsLS]          = useLS('mxt-squads',[]);
   const [allPlayers,savePlayersLS]     = useLS('mxt-players',[]);
   const [selectedSquad,setSelectedSquad] = useState(null);
@@ -763,7 +765,6 @@ function App(){
     async function claimSlot(hostName){
       const updates={};
       const finalName=isPro&&profileName&&profileName!==hostName?profileName:hostName;
-      // If Pro and name differs, rename slot in game
       if(isPro&&profileName&&profileName!==hostName){
         const updatedPlayers=playerList.map(n=>n===hostName?profileName:n);
         const updatedScores={};
@@ -774,8 +775,11 @@ function App(){
         updates[`games/${gameCode}/scores`]=updatedScores;
       }
       if(currentUser) updates[`games/${gameCode}/playerUids/${finalName}`]=currentUser.uid;
+      // Write host scoring preference at join time
+      updates[`games/${gameCode}/playerPrefs/${finalName}/allowHostScore`]=pendingAllowHost;
       await fb.update(fb.ref(fb.db),updates);
       setMyName(finalName);
+      setSelectedName(null);
       navigate("scorecard");
     }
 
@@ -787,6 +791,7 @@ function App(){
         [`games/${gameCode}/players`]:updatedPlayers,
         [`games/${gameCode}/scores`]:updatedScores,
         [`games/${gameCode}/playerUids/${profileName}`]:currentUser.uid,
+        [`games/${gameCode}/playerPrefs/${profileName}/allowHostScore`]:pendingAllowHost,
       };
       await fb.update(fb.ref(fb.db),updates);
       setMyName(profileName);
@@ -807,30 +812,81 @@ function App(){
           {copied&&<div style={{color:"rgba(255,255,255,0.7)",fontSize:12,marginTop:6}}>Copied!</div>}
         </div>
         <ColorBar/>
-        <div style={{margin:"10px 14px 0",background:"#fff",borderRadius:22,padding:"20px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
-          {playerList.map((name,i)=>(
-            <button key={name} onClick={()=>claimSlot(name)} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:10,borderRadius:16,border:`2px solid ${C.sky}33`,background:`${C.sky}08`,cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
-              <Avatar name={name} idx={i} size={44}/>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:800,fontSize:18,color:C.dark}}>{name}</div>
-                {isPro&&profileName&&profileName!==name&&(
-                  <div style={{fontSize:11,color:C.teal,fontWeight:700,marginTop:2}}>Will join as {profileName}</div>
+        <div style={{margin:"10px 14px 0",background:"#fff",borderRadius:22,padding:"12px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
+          {playerList.map((name,i)=>{
+            const isSelected=selectedName===name;
+            return(
+              <div key={name} style={{marginBottom:10,borderRadius:16,border:`2px solid ${isSelected?C.sky:C.sky+"33"}`,background:isSelected?`${C.sky}10`:`${C.sky}08`,overflow:"hidden",transition:"border-color 0.15s"}}>
+                {/* Name row — always visible */}
+                <button onClick={()=>setSelectedName(isSelected?null:name)} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 14px",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
+                  <Avatar name={name} idx={i} size={44}/>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:800,fontSize:17,color:C.dark}}>{name}</div>
+                    {isPro&&profileName&&profileName!==name&&(
+                      <div style={{fontSize:11,color:C.teal,fontWeight:700,marginTop:1}}>Will join as {profileName}</div>
+                    )}
+                    {isSelected&&<div style={{fontSize:11,color:C.teal,fontWeight:700,marginTop:1}}>That's me ✓</div>}
+                  </div>
+                  {!isSelected&&<div style={{color:C.sky,fontSize:13,fontWeight:700,flexShrink:0}}>That's me →</div>}
+                </button>
+                {/* Expanded: host toggle + join button */}
+                {isSelected&&(
+                  <>
+                    <div style={{height:1,background:`${C.sky}22`,margin:"0 14px"}}/>
+                    <div style={{padding:"12px 14px"}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:12}}>
+                        <div>
+                          <div style={{fontSize:13,fontWeight:700,color:C.dark}}>Allow host to score for me</div>
+                          <div style={{fontSize:11,color:C.muted,marginTop:2}}>Useful if you can't reach your phone</div>
+                        </div>
+                        {/* Toggle */}
+                        <div onClick={()=>setPendingAllowHost(v=>!v)}
+                          style={{width:44,height:24,borderRadius:12,background:pendingAllowHost?C.teal:"#ddd",position:"relative",cursor:"pointer",flexShrink:0,transition:"background 0.2s"}}>
+                          <div style={{position:"absolute",top:3,left:pendingAllowHost?20:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/>
+                        </div>
+                      </div>
+                      <button onClick={()=>claimSlot(name)} style={{...btnStyle(`linear-gradient(135deg, ${C.sky}, ${C.teal})`),width:"100%",padding:"13px",borderRadius:50,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                        Join Game →
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
-              <div style={{color:C.sky,fontSize:13,fontWeight:700,flexShrink:0}}>That's me →</div>
-            </button>
-          ))}
+            );
+          })}
           {isPro&&profileName&&!playerList.includes(profileName)&&(
-            <button onClick={addMyselfToGame} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:10,borderRadius:16,border:`2px solid ${C.gold}55`,background:`${C.gold}0a`,cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
-              <Avatar name={profileName} idx={7} size={44}/>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:800,fontSize:18,color:C.dark}}>{profileName}</div>
-                <div style={{fontSize:11,color:C.gold,fontWeight:700,marginTop:2}}>Game Night+ — add yourself</div>
-              </div>
-              <div style={{color:C.gold,fontSize:13,fontWeight:700,flexShrink:0}}>Join →</div>
-            </button>
+            <div style={{marginBottom:10,borderRadius:16,border:`2px solid ${C.gold}55`,background:`${C.gold}0a`,overflow:"hidden"}}>
+              <button onClick={()=>setSelectedName("__pro__")} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 14px",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
+                <Avatar name={profileName} idx={7} size={44}/>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:800,fontSize:17,color:C.dark}}>{profileName}</div>
+                  <div style={{fontSize:11,color:C.gold,fontWeight:700,marginTop:1}}>Game Night+ — add yourself</div>
+                </div>
+                {selectedName!=="__pro__"&&<div style={{color:C.gold,fontSize:13,fontWeight:700,flexShrink:0}}>Join →</div>}
+              </button>
+              {selectedName==="__pro__"&&(
+                <>
+                  <div style={{height:1,background:`${C.gold}33`,margin:"0 14px"}}/>
+                  <div style={{padding:"12px 14px"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:12}}>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:700,color:C.dark}}>Allow host to score for me</div>
+                        <div style={{fontSize:11,color:C.muted,marginTop:2}}>Useful if you can't reach your phone</div>
+                      </div>
+                      <div onClick={()=>setPendingAllowHost(v=>!v)}
+                        style={{width:44,height:24,borderRadius:12,background:pendingAllowHost?C.teal:"#ddd",position:"relative",cursor:"pointer",flexShrink:0,transition:"background 0.2s"}}>
+                        <div style={{position:"absolute",top:3,left:pendingAllowHost?20:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/>
+                      </div>
+                    </div>
+                    <button onClick={addMyselfToGame} style={{...btnStyle(`linear-gradient(135deg, ${C.gold}, ${C.coral})`),width:"100%",padding:"13px",borderRadius:50,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8,color:C.dark}}>
+                      Join Game →
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
-          <div style={{marginTop:8,padding:"12px 16px",background:"#f7f8fa",borderRadius:12,fontSize:12,color:C.muted,textAlign:"center",lineHeight:1.5}}>
+          <div style={{marginTop:4,padding:"10px 14px",background:"#f7f8fa",borderRadius:12,fontSize:12,color:C.muted,textAlign:"center",lineHeight:1.5}}>
             Share code <strong style={{color:C.dark}}>{gameCode}</strong> so others can join from their phone
           </div>
         </div>
@@ -889,14 +945,7 @@ function App(){
                       :gap>0?<Badge label={`${gap} behind`} bg="#f0f0f0"/>:null
                     }
                     {isMe&&!isHost&&(
-                      <button onPointerDown={()=>{
-                        const updates={};
-                        updates[`games/${gameCode}/playerPrefs/${myName}/allowHostScore`]=!allowHost;
-                        fb.update(fb.ref(fb.db),updates);
-                      }} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:`1px solid ${allowHost?C.teal:"#ddd"}`,borderRadius:50,padding:"2px 7px",cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>
-                        <div style={{width:8,height:8,borderRadius:"50%",background:allowHost?C.teal:"#ddd",flexShrink:0}}/>
-                        <span style={{fontSize:10,fontWeight:700,color:allowHost?C.teal:C.muted,whiteSpace:"nowrap"}}>Host scoring</span>
-                      </button>
+                      <Badge label={allowHost?"Host: on":"Host: off"} bg={allowHost?`${C.teal}22`:"#f0f0f0"}/>
                     )}
                   </div>
                 </div>
