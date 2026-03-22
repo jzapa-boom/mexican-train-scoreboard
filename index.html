@@ -1241,7 +1241,7 @@ function App(){
     // savePlayers -> savePlayersLS
     const tabs=[['squads','Squads'],['players','Players']];
     return(
-      <Screen style={{background:C.bg,display:"flex",flexDirection:"column"}}>
+      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
           <button onClick={()=>setScreen(squadsFrom)} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
@@ -1450,7 +1450,7 @@ function App(){
     const locked=TITLE_BADGES.filter(b=>!b.check(pl));
     const tabs=[['history','History'],['badges','Badges'],['customize','Customize']];
     return(
-      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",minHeight:"100dvh"}}>
+      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
         {/* Header */}
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 14px) 18px 14px",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -1870,7 +1870,7 @@ function App(){
     ];
     const tabs=[['deal','Deal Chart'],['quick','Quick Rules'],['house','House Rules']];
     return(
-      <Screen style={{background:C.bg,display:"flex",flexDirection:"column"}}>
+      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
         {/* Header */}
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
