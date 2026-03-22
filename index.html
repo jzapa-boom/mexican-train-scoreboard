@@ -22,6 +22,14 @@
       --sal:env(safe-area-inset-left,0px);
       --sar:env(safe-area-inset-right,0px);
     }
+    @keyframes barSlide{from{transform:scaleX(0);transform-origin:left}to{transform:scaleX(1);transform-origin:left}}
+    .color-bar-seg{animation:barSlide 0.5s cubic-bezier(0.22,1,0.36,1) both;}
+    .color-bar-seg:nth-child(1){animation-delay:0ms}
+    .color-bar-seg:nth-child(2){animation-delay:55ms}
+    .color-bar-seg:nth-child(3){animation-delay:110ms}
+    .color-bar-seg:nth-child(4){animation-delay:165ms}
+    .color-bar-seg:nth-child(5){animation-delay:220ms}
+    .color-bar-seg:nth-child(6){animation-delay:275ms}
   </style>
 </head>
 <body>
@@ -78,6 +86,15 @@ function genCode() {
 }
 
 // ── Palette ────────────────────────────────────────────────────────────────
+// ── Category header gradients ─────────────────────────────────────────────
+const GR = {
+  ingame:     "linear-gradient(135deg, #FF9770, #FF70A6)",
+  onboarding: "linear-gradient(135deg, #1a8a80, #2a9fd6)",
+  profile:    "linear-gradient(135deg, #6c3fbf, #9b59d0)",
+  rules:      "linear-gradient(135deg, #2d6a4f, #40916c)",
+  upgrade:    "linear-gradient(135deg, #c07800, #e8a020)",
+};
+
 const C = {
   sky:"#70D6FF", pink:"#FF70A6", coral:"#FF9770",
   gold:"#FFD670", lime:"#E9FF70", teal:"#2EC4B6",
@@ -175,6 +192,17 @@ function Avatar({name,idx=0,size=38}){
 
 function Badge({label,bg=C.sky}){
   return<span style={{background:bg,color:C.dark,borderRadius:50,padding:"3px 9px",fontSize:11,fontWeight:800,fontFamily:"'Nunito',sans-serif",letterSpacing:0.3,whiteSpace:"nowrap"}}>{label}</span>;
+}
+
+function ColorBar(){
+  return(
+    <div style={{display:"flex",height:7,flexShrink:0,overflow:"hidden"}}>
+      {[C.sky,C.pink,C.coral,C.gold,C.lime,C.teal].map((c,i)=>(
+        <div key={i} style={{flex:1,background:c,animation:`slideIn 0.35s ease-out ${i*0.06}s both`}}/>
+      ))}
+      <style>{`@keyframes slideIn{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}`}</style>
+    </div>
+  );
 }
 
 const btnStyle=(bg,extra={})=>({background:bg,color:"#fff",border:"none",borderRadius:16,padding:"15px 28px",fontSize:16,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",WebkitAppearance:"none",minHeight:48,...extra});
@@ -380,7 +408,9 @@ function App(){
       if(!uid) return;
       const myScore=finalTotals[name]??0;
       const myPlacement=placement.indexOf(name)+1;
-      const historyEntry={gameCode:data.gameCode||gameCode,date:Date.now(),players:finalPlayers,myScore,placement:myPlacement};
+      // Detect if this game's players match a saved squad
+      const matchedSquad=squads.find(sq=>sq.members&&finalPlayers.length===sq.members.length&&finalPlayers.every(p=>sq.members.includes(p)));
+      const historyEntry={gameCode:data.gameCode||gameCode,date:Date.now(),players:finalPlayers,scores:finalScores,startPip:data.startPip??12,myScore,placement:myPlacement,squadName:matchedSquad?.name||null};
       fb.get(fb.ref(fb.db,`profiles/${uid}/gameHistory`)).then(function(snap){
         const existing=snap.exists()?snap.val():[];
         const arr=Array.isArray(existing)?existing:Object.values(existing);
@@ -514,13 +544,18 @@ function App(){
   // ── JOIN ───────────────────────────────────────────────────────────────────
   if(screen==="join") return(
     <Screen style={{background:C.bg}}>
-      <div style={{background:`linear-gradient(135deg, ${C.teal}, ${C.sky})`,padding:"calc(env(safe-area-inset-top) + 20px) 20px 56px",position:"relative",overflow:"hidden"}}>
-        <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
-        <button onClick={()=>setScreen("splash")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-        <div style={{fontFamily:"'Fredoka One',cursive",fontSize:30,color:"#fff"}}>Join a Game</div>
-        <div style={{color:"rgba(255,255,255,0.75)",fontSize:14,marginTop:4}}>Enter the 4-letter code from your host</div>
+      <div style={{background:GR.onboarding,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px"}}>
+        <button onClick={()=>setScreen("splash")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <IconUsers size={24} color="#fff"/>
+          <div>
+            <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>Join a Game</div>
+            <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:2}}>Enter the 4-letter code from your host</div>
+          </div>
+        </div>
       </div>
-      <div style={{margin:"-26px 14px 0",background:"#fff",borderRadius:22,padding:"32px 20px 24px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
+      <ColorBar/>
+      <div style={{margin:"10px 12px 0",background:"#fff",borderRadius:18,padding:"24px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
         <input
           value={joinInput}
           onChange={e=>{setJoinInput(e.target.value.toUpperCase());setJoinError("");}}
@@ -542,8 +577,8 @@ function App(){
     const playerNames=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
     return(
       <Screen style={{background:C.bg}}>
-        {/* Compact header — darker gradient for readability */}
-        <div style={{background:"linear-gradient(135deg, #1a8a80, #2a9fd6)",padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px"}}>
+        {/* Compact header */}
+        <div style={{background:GR.onboarding,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
             <button onClick={()=>setScreen("splash")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
             <button onClick={()=>{setRulesFrom('setup');setRulesTab('deal');setScreen("rules");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",borderRadius:50,padding:"7px 16px",fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}><IconRules size={15} color="#fff"/> Rules</button>
@@ -551,10 +586,7 @@ function App(){
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>Game Setup</div>
           <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:3}}>Configure your game</div>
         </div>
-        {/* Color bar */}
-        <div style={{display:"flex",height:7,flexShrink:0}}>
-          {[C.sky,C.pink,C.coral,C.gold,C.lime,C.teal].map((c,i)=><div key={i} style={{flex:1,background:c}}/>)}
-        </div>
+        <ColorBar/>
 
         {/* Single card with section dividers */}
         <div style={{margin:"10px 12px 24px",background:"#fff",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
@@ -691,10 +723,10 @@ function App(){
 
     return(
       <Screen style={{background:C.bg}}>
-        <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 24px) 20px 32px",position:"relative"}}>
+        <div style={{background:GR.onboarding,padding:"calc(env(safe-area-inset-top) + 20px) 20px 24px",position:"relative"}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)",pointerEvents:"none"}}/>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:30,color:"#fff"}}>Who are you?</div>
-          <div style={{color:"rgba(255,255,255,0.8)",fontSize:14,marginTop:4}}>Tap your name to join</div>
+          <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:4}}>Tap your name to join</div>
           <button onClick={copyCode} style={{display:"inline-flex",alignItems:"center",gap:8,marginTop:14,background:"rgba(255,255,255,0.2)",border:"none",borderRadius:50,padding:"6px 14px",cursor:"pointer"}}>
             <span style={{color:"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,letterSpacing:1}}>GAME CODE</span>
             <span style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:22,letterSpacing:4}}>{gameCode}</span>
@@ -702,7 +734,8 @@ function App(){
           </button>
           {copied&&<div style={{color:"rgba(255,255,255,0.7)",fontSize:12,marginTop:6}}>Copied!</div>}
         </div>
-        <div style={{margin:"12px 14px 0",background:"#fff",borderRadius:22,padding:"20px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
+        <ColorBar/>
+        <div style={{margin:"10px 14px 0",background:"#fff",borderRadius:22,padding:"20px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
           {playerList.map((name,i)=>(
             <button key={name} onClick={()=>claimSlot(name)} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:10,borderRadius:16,border:`2px solid ${C.sky}33`,background:`${C.sky}08`,cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
               <Avatar name={name} idx={i} size={44}/>
@@ -739,7 +772,7 @@ function App(){
     return(
       <div style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden",fontFamily:"'Nunito',sans-serif"}}>
         {/* Compact header — 3-column grid for true centering */}
-        <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 14px) 18px 12px",flexShrink:0}}>
+        <div style={{background:GR.ingame,padding:"calc(env(safe-area-inset-top) + 14px) 18px 12px",flexShrink:0}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",gap:8}}>
             {/* Left: round label stacked */}
             <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center"}}>
@@ -759,10 +792,7 @@ function App(){
           </div>
           {copied&&<div style={{textAlign:"center",color:"rgba(255,255,255,0.7)",fontSize:11,marginTop:4}}>Copied!</div>}
         </div>
-        {/* Color bar divider */}
-        <div style={{display:"flex",height:7,flexShrink:0}}>
-          {[C.sky,C.pink,C.coral,C.gold,C.lime,C.teal].map((c,i)=><div key={i} style={{flex:1,background:c}}/>)}
-        </div>
+        <ColorBar/>
         <div style={{padding:"10px 12px 4px",flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
           {rank.map((name,i)=>{
             const total=totals[name],wins=getWins(name);
@@ -853,7 +883,7 @@ function App(){
     const scoringForOther=targetPlayer!==myName;
     return(
       <Screen style={{background:C.bg}}>
-        <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}cc, ${C.coral})`,padding:"calc(env(safe-area-inset-top) + 18px) 18px 18px",display:"flex",alignItems:"center",gap:13}}>
+        <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}cc, #FF70A6)`,padding:"calc(env(safe-area-inset-top) + 18px) 18px 18px",display:"flex",alignItems:"center",gap:13}}>
           <button onClick={()=>{setEditingRound(null);setScoringFor("");setScreen("scorecard");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <Avatar name={targetPlayer} idx={pIdx} size={48}/>
           <div style={{flex:1,minWidth:0}}>
@@ -870,6 +900,7 @@ function App(){
             <div style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:"clamp(38px,11vw,52px)",lineHeight:1}}>{score}</div>
           </div>
         </div>
+        <ColorBar/>
         <div style={{display:"flex",margin:"12px 12px 0",background:"#fff",borderRadius:14,padding:4,boxShadow:"0 2px 10px rgba(0,0,0,0.06)"}}>
           {[["Tap Tiles",false],["Camera AI",true]].map(([label,cam])=>(
             <button key={label} onClick={()=>{setCameraMode(cam);if(!cam)setCameraScore(null);}} style={{flex:1,padding:"11px 0",borderRadius:11,border:"none",cursor:"pointer",minHeight:46,background:cameraMode===cam?`linear-gradient(135deg, ${C.coral}, ${C.pink})`:"transparent",color:cameraMode===cam?"#fff":C.muted,fontWeight:800,fontSize:"clamp(13px,3.5vw,15px)",fontFamily:"'Nunito',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
@@ -1004,7 +1035,7 @@ function App(){
     return(
       <Screen style={{background:C.dark}}>
         <div style={{padding:"calc(env(safe-area-inset-top) + 18px) 16px 16px",display:"flex",alignItems:"center",gap:12}}>
-          <button onClick={()=>setScreen(gameData.status==="done"?"gameover":"scorecard")} style={{background:"rgba(255,255,255,0.09)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <button onClick={()=>setScreen(viewingPlayer?"profile":gameData.status==="done"?"gameover":"scorecard")} style={{background:"rgba(255,255,255,0.09)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{flex:1}}>
             <div style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:26}}>Full Scoreboard</div>
             <div style={{color:"rgba(255,255,255,0.4)",fontSize:12}}>Double-{startPip} · {players.length} players · Code: {gameCode}</div>
@@ -1158,7 +1189,7 @@ function App(){
     const tabs=[['squads','Squads'],['players','Players']];
     return(
       <Screen style={{background:C.bg,display:"flex",flexDirection:"column"}}>
-        <div style={{background:`linear-gradient(135deg, ${C.sky}, ${C.teal})`,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
+        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
           <button onClick={()=>setScreen(squadsFrom)} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1169,6 +1200,8 @@ function App(){
             </div>
           </div>
         </div>
+        {/* Color Bar */}
+        <ColorBar/>
         {/* Tab Nav */}
         <div style={{background:"#fff",borderBottom:"1px solid #eee",display:"flex",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
           {tabs.map(([key,label])=>{
@@ -1293,12 +1326,12 @@ function App(){
     const notInSquad=allPlayers.filter(p=>!inSquad.includes(p.name));
     return(
       <Screen style={{background:C.bg}}>
-        <div style={{background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,padding:"calc(env(safe-area-inset-top) + 20px) 20px 40px",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
-          <button onClick={()=>setScreen("squads")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-          <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:"#fff"}}>{isNew?"New Squad":"Edit Squad"}</div>
+        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px"}}>
+          <button onClick={()=>setScreen("squads")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>{isNew?"New Squad":"Edit Squad"}</div>
         </div>
-        <div style={{padding:"16px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
+        <ColorBar/>
+        <div style={{padding:"12px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
           <div style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
             <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:8}}>Squad Name</div>
             <input value={editingSquad.name} onChange={e=>setEditingSquad(prev=>({...prev,name:e.target.value}))}
@@ -1360,47 +1393,94 @@ function App(){
     const plSquads=squads.filter(s=>s.members?.includes(pl.name));
     const avgScore=pl.gamesPlayed>0?Math.round((pl.totalScore||0)/pl.gamesPlayed):0;
     const pIdx=pl.avatarIdx??0;
+    const avatarColor=AVATAR_BG[pIdx%AVATAR_BG.length];
     return(
       <Screen style={{background:C.bg}}>
-        <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}, ${C.coral})`,padding:"calc(env(safe-area-inset-top) + 20px) 20px 36px",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
-          <button onClick={()=>setScreen("squads")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-          <div style={{display:"flex",alignItems:"center",gap:14}}>
-            <Avatar name={pl.name} idx={pIdx} size={54}/>
-            <div>
-              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>{pl.name}</div>
-              <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:5}}>
-                {plSquads.map(s=><Badge key={s.id} label={s.name} bg="rgba(255,255,255,0.25)"/>)}
-              </div>
+        {/* Compact header */}
+        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 14px) 18px 14px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <button onClick={()=>setScreen("squads")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+            <Avatar name={pl.name} idx={pIdx} size={44}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
+              {plSquads.length>0&&(
+                <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>
+                  {plSquads.map(s=><Badge key={s.id} label={s.name} bg="rgba(255,255,255,0.25)"/>)}
+                </div>
+              )}
             </div>
           </div>
         </div>
-        <div style={{padding:"16px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+        <ColorBar/>
+
+        <div style={{padding:"12px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
+
+          {/* Stats */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:12}}>
             {[["Games",pl.gamesPlayed||0],["Wins",pl.wins||0],["Avg Score",avgScore]].map(([label,val])=>(
-              <div key={label} style={{background:"#fff",borderRadius:14,padding:"14px 10px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
-                <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:C.dark,lineHeight:1}}>{val}</div>
+              <div key={label} style={{background:"#fff",borderRadius:14,padding:"12px 10px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+                <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:C.dark,lineHeight:1}}>{val}</div>
                 <div style={{fontSize:11,color:C.muted,fontWeight:700,marginTop:4}}>{label}</div>
               </div>
             ))}
           </div>
-          {(pl.gameHistory||[]).length>0&&(
-            <div style={{background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
-              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:10}}>Recent Games</div>
-              {(pl.gameHistory||[]).slice(-5).reverse().map((g,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingBottom:8,marginBottom:8,borderBottom:i<4?"1px solid #f0f0f0":"none"}}>
-                  <div>
-                    <div style={{fontWeight:700,fontSize:14,color:C.dark}}>#{g.placement} of {g.players?.length}</div>
-                    <div style={{fontSize:12,color:C.muted}}>{new Date(g.date).toLocaleDateString()}</div>
-                  </div>
-                  <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:g.placement===1?C.gold:C.dark}}>{g.myScore} pts</div>
-                </div>
-              ))}
+
+          {/* Recent Games */}
+          <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+            <div style={{padding:"12px 16px",borderBottom:"1.5px solid #f0f0f0"}}>
+              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Recent Games</div>
             </div>
-          )}
-          {(pl.gameHistory||[]).length===0&&(
-            <div style={{textAlign:"center",padding:"24px",color:C.muted,fontSize:14}}>No games recorded yet.</div>
-          )}
+            {(pl.gameHistory||[]).length===0&&(
+              <div style={{textAlign:"center",padding:"20px",color:C.muted,fontSize:13}}>No games recorded yet.</div>
+            )}
+            {(pl.gameHistory||[]).slice(-5).reverse().map((g,i,arr)=>{
+              const isWin=g.placement===1;
+              const canView=!!g.scores;
+              return(
+                <div key={i} onClick={canView?()=>{
+                  setGameData({players:g.players,scores:g.scores,startPip:g.startPip??12,currentRound:0,status:"done"});
+                  setGameCode(g.gameCode||"");
+                  setMyName(pl.name);
+                  setScreen("fullboard");
+                }:undefined}
+                style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:i<arr.length-1?"1px solid #f0f0f0":"none",cursor:canView?"pointer":"default",background:canView?"transparent":"transparent"}}>
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <div style={{fontWeight:700,fontSize:14,color:C.dark}}>#{g.placement} of {g.players?.length}</div>
+                      {g.squadName&&<span style={{background:`${C.teal}18`,color:C.teal,borderRadius:50,padding:"1px 7px",fontSize:10,fontWeight:800}}>{g.squadName}</span>}
+                      {isWin&&<span style={{fontSize:12}}>🏆</span>}
+                    </div>
+                    <div style={{fontSize:11,color:C.muted,marginTop:1}}>
+                      {new Date(g.date).toLocaleDateString()}
+                      {g.players&&<span style={{color:"#ccc"}}> · {g.players.join(", ")}</span>}
+                      {canView&&<span style={{color:C.sky,marginLeft:6}}>View →</span>}
+                    </div>
+                  </div>
+                  <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:isWin?C.gold:C.dark,flexShrink:0}}>{g.myScore} pts</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* My Squads */}
+          <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+            <div style={{padding:"12px 16px",borderBottom:"1.5px solid #f0f0f0"}}>
+              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>My Squads</div>
+            </div>
+            {plSquads.length===0&&(
+              <div style={{textAlign:"center",padding:"20px",color:C.muted,fontSize:13}}>Not in any squads yet.</div>
+            )}
+            {plSquads.map((sq,i)=>(
+              <div key={sq.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:i<plSquads.length-1?"1px solid #f0f0f0":"none"}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:14,color:C.dark}}>{sq.name}</div>
+                  <div style={{fontSize:11,color:C.muted,marginTop:1}}>{sq.members?.join(", ")}</div>
+                </div>
+                <div style={{fontSize:11,color:C.muted,fontWeight:700}}>{sq.members?.length} players</div>
+              </div>
+            ))}
+          </div>
+
         </div>
         <BottomBar>
           <button onClick={()=>{setSetupPlayers([{name:pl.name},{name:""}]);setScreen('setup');}} style={{...btnStyle(`linear-gradient(135deg, ${C.teal}, #1a5f82)`),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
@@ -1415,24 +1495,31 @@ function App(){
   if(screen==="upgrade"){
     const features=["Full game history & stats","Squads synced to your account","AI pip counting with camera","Recover your profile on any device"];
     return(
-      <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center",position:"relative"}}>
-        <button onClick={()=>setScreen(upgradeFrom)} style={{position:"absolute",top:"calc(env(safe-area-inset-top) + 16px)",left:16,background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-        <span style={{background:`linear-gradient(135deg, ${C.gold}, ${C.coral})`,color:C.dark,borderRadius:50,padding:"5px 16px",fontSize:12,fontWeight:900,fontFamily:"'Nunito',sans-serif",letterSpacing:0.5,marginBottom:20,display:"inline-block"}}>Game Night+</span>
-        <div style={{fontFamily:"'Fredoka One',cursive",fontSize:32,color:"#fff",lineHeight:1.1,marginBottom:8}}>Save every game night forever</div>
-        <div style={{color:"rgba(255,255,255,0.55)",fontSize:15,marginBottom:32,maxWidth:300,lineHeight:1.5}}>Upgrade once. Keep your history, stats and squads on any device.</div>
-        <div style={{width:"100%",maxWidth:360,display:"flex",flexDirection:"column",gap:10,marginBottom:32}}>
-          {features.map(f=>(
-            <div key={f} style={{display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,0.06)",borderRadius:14,padding:"12px 16px"}}>
-              <div style={{width:28,height:28,borderRadius:"50%",background:`linear-gradient(135deg, ${C.gold}, ${C.coral})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:900,fontSize:13,color:C.dark}}>✓</div>
-              <span style={{color:"#fff",fontWeight:700,fontSize:15,textAlign:"left"}}>{f}</span>
-            </div>
-          ))}
+      <Screen style={{background:C.bg}}>
+        <div style={{background:GR.upgrade,padding:"calc(env(safe-area-inset-top) + 16px) 18px 20px"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+            <button onClick={()=>setScreen(upgradeFrom)} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+            <span style={{background:"rgba(255,255,255,0.25)",color:"#fff",borderRadius:50,padding:"4px 14px",fontSize:11,fontWeight:900,fontFamily:"'Nunito',sans-serif",letterSpacing:0.5}}>Game Night+</span>
+          </div>
+          <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:"#fff",lineHeight:1.1}}>Save every game night forever</div>
+          <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:4,lineHeight:1.5}}>Upgrade once. Keep your history, stats and squads on any device.</div>
         </div>
-        <div style={{fontFamily:"'Fredoka One',cursive",fontSize:48,color:C.gold,lineHeight:1}}>$3.99</div>
-        <div style={{color:"rgba(255,255,255,0.4)",fontSize:13,marginBottom:24}}>one-time · no subscription</div>
-        <div style={{width:"100%",maxWidth:360,display:"flex",flexDirection:"column",gap:12}}>
-          <button onClick={()=>alert("Coming soon — payment integration in progress.")} style={{...btnStyle(`linear-gradient(135deg, ${C.gold}, ${C.coral})`),width:"100%",fontSize:17,padding:"18px",borderRadius:50,color:C.dark,fontWeight:900,letterSpacing:0.5}}>Upgrade to Game Night+</button>
-          <button onClick={()=>setScreen(upgradeFrom)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.35)",fontSize:14,fontWeight:600,fontFamily:"'Nunito',sans-serif",cursor:"pointer",padding:"8px"}}>No thanks</button>
+        <ColorBar/>
+        <div style={{padding:"16px 14px",paddingBottom:"calc(24px + env(safe-area-inset-bottom))"}}>
+          <div style={{background:"#fff",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:16}}>
+            {features.map((f,i)=>(
+              <div key={f} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:i<features.length-1?"1px solid #f0f0f0":"none"}}>
+                <div style={{width:26,height:26,borderRadius:"50%",background:"linear-gradient(135deg, #c07800, #e8a020)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:900,fontSize:12,color:"#fff"}}>✓</div>
+                <span style={{color:C.dark,fontWeight:700,fontSize:15}}>{f}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{textAlign:"center",marginBottom:20}}>
+            <div style={{fontFamily:"'Fredoka One',cursive",fontSize:52,color:"#c07800",lineHeight:1}}>$3.99</div>
+            <div style={{color:C.muted,fontSize:13,marginTop:2}}>one-time · no subscription</div>
+          </div>
+          <button onClick={()=>alert("Coming soon — payment integration in progress.")} style={{...btnStyle("linear-gradient(135deg, #c07800, #e8a020)"),width:"100%",fontSize:17,padding:"18px",borderRadius:50,fontWeight:900,letterSpacing:0.5,boxShadow:"0 6px 24px rgba(192,120,0,0.35)"}}>Upgrade to Game Night+</button>
+          <button onClick={()=>setScreen(upgradeFrom)} style={{display:"block",width:"100%",background:"none",border:"none",color:C.muted,fontSize:14,fontWeight:600,fontFamily:"'Nunito',sans-serif",cursor:"pointer",padding:"14px 8px",textAlign:"center"}}>No thanks</button>
         </div>
       </Screen>
     );
@@ -1476,7 +1563,7 @@ function App(){
     return(
       <Screen style={{background:C.bg,display:"flex",flexDirection:"column"}}>
         {/* Header */}
-        <div style={{background:`linear-gradient(135deg, #1b7a72, #1a5f82)`,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
+        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
           <button onClick={()=>setScreen(rulesFrom)} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1487,6 +1574,7 @@ function App(){
             </div>
           </div>
         </div>
+        <ColorBar/>
         {/* Tab Nav — sticky */}
         <div style={{background:"#fff",borderBottom:"1px solid #eee",display:"flex",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
           {tabs.map(([key,label])=>{
