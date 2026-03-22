@@ -1783,9 +1783,16 @@ function App(){
 
         </div>
         <BottomBar>
-          <button onClick={saveProfileEdit} style={{...btnStyle(GR.profile),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-            Save Profile
-          </button>
+          <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%"}}>
+            <button onClick={saveProfileEdit} style={{...btnStyle(GR.profile),width:"100%",fontSize:16,padding:"15px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+              Save Profile
+            </button>
+            {!isPro&&(
+              <button onClick={()=>{setUpgradeFrom("profileedit");setScreen("upgrade");}} style={{width:"100%",padding:"11px",borderRadius:50,border:`1.5px solid ${C.gold}`,background:`${C.gold}14`,color:"#9a6800",fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
+                <span style={{fontSize:14}}>⭐</span> Game Night+ — sync profile across devices
+              </button>
+            )}
+          </div>
         </BottomBar>
       </Screen>
     );
