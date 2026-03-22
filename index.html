@@ -1498,6 +1498,22 @@ function App(){
           })}
         </div>
 
+        {/* Live preview — only on Customize tab */}
+        {profileTab==='customize'&&(
+          <div style={{background:"#fff",borderBottom:"1px solid #f0f0f0",padding:"16px 18px",display:"flex",alignItems:"center",gap:14,flexShrink:0}}>
+            <Avatar name={pl.name} idx={pIdx} size={56} emoji={pl.avatarEmoji||null} photo={pl.avatarPhoto||null} color={pl.avatarColor||null}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:C.dark,lineHeight:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
+              {pl.tagline
+                ?<div style={{fontSize:12,color:C.muted,marginTop:2}}>{pl.tagline}</div>
+                :<div style={{fontSize:12,color:"#ccc",marginTop:2}}>No tagline set</div>
+              }
+              <div style={{fontSize:11,color:C.muted,marginTop:3}}>{pl.avatarPhoto?"Photo avatar":pl.avatarEmoji?`Emoji: ${pl.avatarEmoji}`:"Initials avatar"}</div>
+            </div>
+            <button onClick={()=>{setEditingProfile({...pl});setScreen("profileedit");}} style={{...btnStyle(GR.profile),padding:"10px 16px",fontSize:13,borderRadius:50,flexShrink:0}}>Edit</button>
+          </div>
+        )}
+
         {/* Tab content */}
         <div style={{flex:1,overflowY:"auto",padding:"12px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
 
@@ -1604,41 +1620,35 @@ function App(){
           {/* ── CUSTOMIZE TAB ── */}
           {profileTab==='customize'&&(
             <div>
-              {/* Identity */}
+              {/* Color swatches — tappable, goes to edit */}
               <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+                <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Avatar Color</div>
+                </div>
+                <div style={{padding:"12px 16px 14px"}}>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                    {AVATAR_COLORS.map((c,i)=>(
+                      <div key={c} style={{width:30,height:30,borderRadius:"50%",background:c,border:`3px solid ${(pl.avatarColor===c||(!pl.avatarColor&&i===pIdx))?"#333":"transparent"}`,boxSizing:"border-box"}}/>
+                    ))}
+                  </div>
+                  <div style={{fontSize:12,color:C.muted}}>Tap <strong>Edit</strong> above to change color, emoji, or photo.</div>
+                </div>
+              </div>
+              {/* Identity summary */}
+              <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
                 <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0"}}>
                   <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Identity</div>
                 </div>
                 <div style={{padding:"0 16px"}}>
                   <div style={{borderBottom:"1px solid #f0f0f0",padding:"10px 0"}}>
-                    <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Display name</div>
-                    <input value={pl.name} readOnly
-                      style={{width:"100%",fontSize:16,border:"none",outline:"none",fontFamily:"'Nunito',sans-serif",color:C.dark,background:"transparent"}}/>
+                    <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:3}}>Display name</div>
+                    <div style={{fontSize:15,color:C.dark,fontWeight:700}}>{pl.name}</div>
                   </div>
                   <div style={{padding:"10px 0"}}>
-                    <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Tagline</div>
+                    <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:3}}>Tagline</div>
                     <div style={{fontSize:13,color:pl.tagline?C.dark:C.muted}}>{pl.tagline||"None set"}</div>
                   </div>
                 </div>
-              </div>
-              {/* Avatar preview + edit button */}
-              <div style={{background:"#fff",borderRadius:16,padding:"16px",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12,display:"flex",alignItems:"center",gap:14}}>
-                <Avatar name={pl.name} idx={pIdx} size={56} emoji={pl.avatarEmoji||null} photo={pl.avatarPhoto||null} color={pl.avatarColor||null}/>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:800,fontSize:15,color:C.dark}}>{pl.name}</div>
-                  <div style={{fontSize:12,color:C.muted,marginTop:2}}>{pl.avatarPhoto?"Photo avatar":pl.avatarEmoji?`Emoji: ${pl.avatarEmoji}`:"Initials avatar"}</div>
-                </div>
-                <button onClick={()=>{setEditingProfile({...pl});setScreen("profileedit");}} style={{...btnStyle(GR.profile),padding:"10px 16px",fontSize:13,borderRadius:50}}>Edit</button>
-              </div>
-              {/* Color swatches preview */}
-              <div style={{background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
-                <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5,marginBottom:10}}>Avatar Color</div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  {AVATAR_COLORS.map((c,i)=>(
-                    <div key={c} style={{width:28,height:28,borderRadius:"50%",background:c,border:`3px solid ${(pl.avatarColor===c||(!pl.avatarColor&&i===pIdx))?"#333":"transparent"}`,boxSizing:"border-box"}}/>
-                  ))}
-                </div>
-                <div style={{marginTop:10,fontSize:12,color:C.muted}}>Tap Edit to change your color, emoji, or photo.</div>
               </div>
             </div>
           )}
