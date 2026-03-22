@@ -260,6 +260,24 @@ const fb = window.__fb;
 
 function App(){
   const [screen,setScreen]           = useState("splash");
+  const [navHistory,setNavHistory]   = useState([]);
+
+  function navigate(to){
+    setNavHistory(h=>[...h,screen]);
+    setScreen(to);
+  }
+  function goBack(fallback="splash"){
+    setNavHistory(h=>{
+      if(h.length===0){setScreen(fallback);return h;}
+      const prev=h[h.length-1];
+      setScreen(prev);
+      return h.slice(0,-1);
+    });
+  }
+  function resetNav(to){
+    setNavHistory([]);
+    setScreen(to);
+  }
   const [setupPlayers,setSetupPlayers] = useState([{name:""},{name:""}]);
   const [setupPip,setSetupPip]       = useState(12);
   const [gameCode,setGameCode]       = useState("");
@@ -288,7 +306,8 @@ function App(){
   const [editingSquad,setEditingSquad] = useState(null);
   const [viewingPlayer,setViewingPlayer] = useState(null);
   const [profileFrom,setProfileFrom]     = useState("squads");
-  const [editingProfile,setEditingProfile] = useState(null); // draft copy during edit
+  const [editingProfile,setEditingProfile] = useState(null); // draft copy during inline edit
+  const [isEditingProfile,setIsEditingProfile] = useState(false);
   const [squadsFrom,setSquadsFrom]     = useState('splash');
   const [currentUser,setCurrentUser]   = useState(null);
   const [userProfile,setUserProfile]   = useState(null);
@@ -315,7 +334,7 @@ function App(){
         if(data.status==="done" && screenRef.current!=="gameover" && screenRef.current!=="fullboard"){
           writeGameResults(data);
           if(!userProfile) setPendingClaimGame(gameCode);
-          setScreen("gameover");
+          navigate("gameover");
         }
       }
     });
@@ -334,7 +353,7 @@ function App(){
           setMyName(profile.name);
           if(profile.isPro) setIsPro(true);
         } else {
-          setScreen('welcome');
+          navigate('welcome');
         }
         setAuthReady(true);
       } else {
@@ -382,7 +401,7 @@ function App(){
       createdAt:Date.now(),
     });
     setGameCode(code);
-    setScreen("pickname");
+    navigate("pickname");
   }
 
   async function lookupGame(){
@@ -395,7 +414,7 @@ function App(){
     setGameData(data);
     setGameCode(code);
     setJoinError("");
-    setScreen("pickname");
+    navigate("pickname");
   }
 
   async function submitScore(score){
@@ -416,7 +435,7 @@ function App(){
     }
     await fb.update(fb.ref(fb.db),updates);
     setSelected({});setCameraScore(null);setEditingRound(null);setScoringFor("");
-    setScreen("scorecard");
+    navigate("scorecard");
   }
 
   async function writeGameResults(data){
@@ -460,7 +479,7 @@ function App(){
     if(!pl) return;
     setProfileFrom(screen);
     setViewingPlayer(pl);
-    setScreen('profile');
+    navigate('profile');
   }
 
   function avatarProps(name,fallbackIdx=0){
@@ -564,21 +583,21 @@ function App(){
       <div style={{fontFamily:"'Fredoka One',cursive",fontSize:"clamp(28px,8vw,42px)",color:"#fff",lineHeight:1.15,marginBottom:6,textAlign:"center"}}>Mexican Train<br/>Game Night</div>
       <div style={{color:"rgba(255,255,255,0.4)",fontSize:"clamp(11px,3vw,13px)",letterSpacing:2.5,textTransform:"uppercase",marginBottom:48}}>Scorekeeper Companion</div>
       <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:320}}>
-        <button onClick={()=>setScreen("setup")} style={{...btnStyle(`linear-gradient(135deg, ${C.coral}, ${C.pink})`),padding:"16px 20px",borderRadius:20,boxShadow:`0 8px 32px ${C.pink}55`,display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
+        <button onClick={()=>navigate("setup")} style={{...btnStyle(`linear-gradient(135deg, ${C.coral}, ${C.pink})`),padding:"16px 20px",borderRadius:20,boxShadow:`0 8px 32px ${C.pink}55`,display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
           <IconTrain size={26} color="#fff"/>
           <div style={{flex:1}}>
             <div style={{fontSize:17,fontWeight:900,letterSpacing:0.3,lineHeight:1.2}}>New Game</div>
             <div style={{fontSize:12,fontWeight:600,opacity:0.8,marginTop:2}}>set up and start playing</div>
           </div>
         </button>
-        <button onClick={()=>setScreen("join")} style={{...btnStyle("rgba(255,255,255,0.12)"),padding:"16px 20px",borderRadius:20,border:"2px solid rgba(255,255,255,0.2)",display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
+        <button onClick={()=>navigate("join")} style={{...btnStyle("rgba(255,255,255,0.12)"),padding:"16px 20px",borderRadius:20,border:"2px solid rgba(255,255,255,0.2)",display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
           <IconUsers size={26} color="#fff"/>
           <div style={{flex:1}}>
             <div style={{fontSize:17,fontWeight:900,letterSpacing:0.3,lineHeight:1.2}}>Join Game</div>
             <div style={{fontSize:12,fontWeight:600,opacity:0.7,marginTop:2}}>enter a game code to join</div>
           </div>
         </button>
-        <button onClick={()=>setScreen("squads")} style={{...btnStyle("rgba(255,255,255,0.08)"),padding:"16px 20px",borderRadius:20,border:"2px solid rgba(255,255,255,0.2)",display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
+        <button onClick={()=>navigate("squads")} style={{...btnStyle("rgba(255,255,255,0.08)"),padding:"16px 20px",borderRadius:20,border:"2px solid rgba(255,255,255,0.2)",display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
           <IconSquads size={26} color="#fff"/>
           <div style={{flex:1}}>
             <div style={{fontSize:17,fontWeight:900,letterSpacing:0.3,lineHeight:1.2}}>My Squads</div>
@@ -598,7 +617,7 @@ function App(){
   if(screen==="join") return(
     <Screen style={{background:C.bg}}>
       <div style={{background:GR.onboarding,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px"}}>
-        <button onClick={()=>setScreen("splash")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+        <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <IconUsers size={24} color="#fff"/>
           <div>
@@ -633,8 +652,8 @@ function App(){
         {/* Compact header */}
         <div style={{background:GR.onboarding,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <button onClick={()=>setScreen("splash")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-            <button onClick={()=>{setRulesFrom('setup');setRulesTab('deal');setScreen("rules");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",borderRadius:50,padding:"7px 16px",fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}><IconRules size={15} color="#fff"/> Rules</button>
+            <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+            <button onClick={()=>{setRulesFrom('setup');setRulesTab('deal');navigate("rules");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",borderRadius:50,padding:"7px 16px",fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}><IconRules size={15} color="#fff"/> Rules</button>
           </div>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>Game Setup</div>
           <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:3}}>Configure your game</div>
@@ -697,7 +716,7 @@ function App(){
                     {sq.name}
                   </button>
                 ))}
-                <button onClick={()=>{setSquadsFrom('setup');setScreen('squads');}}
+                <button onClick={()=>{setSquadsFrom('setup');navigate('squads');}}
                   style={{padding:"7px 14px",borderRadius:50,border:`1.5px dashed ${C.teal}`,background:"transparent",color:C.teal,fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>
                   + Squads
                 </button>
@@ -757,7 +776,7 @@ function App(){
       if(currentUser) updates[`games/${gameCode}/playerUids/${finalName}`]=currentUser.uid;
       await fb.update(fb.ref(fb.db),updates);
       setMyName(finalName);
-      setScreen("scorecard");
+      navigate("scorecard");
     }
 
     async function addMyselfToGame(){
@@ -771,7 +790,7 @@ function App(){
       };
       await fb.update(fb.ref(fb.db),updates);
       setMyName(profileName);
-      setScreen("scorecard");
+      navigate("scorecard");
     }
 
     return(
@@ -887,13 +906,13 @@ function App(){
                 <div style={{width:64,flexShrink:0,display:"flex",justifyContent:"flex-end"}}>
                   {hasScore
                     ? canScore
-                      ? <button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(currentRound);setScoringFor(name);setScreen("counter");}} style={{background:`${C.teal}18`,border:`1.5px solid ${C.teal}55`,borderRadius:10,padding:"6px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+                      ? <button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(currentRound);setScoringFor(name);navigate("counter");}} style={{background:`${C.teal}18`,border:`1.5px solid ${C.teal}55`,borderRadius:10,padding:"6px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
                           <span style={{fontSize:14,color:C.teal}}>✓</span>
                           <span style={{fontSize:11,color:C.teal,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Edit</span>
                         </button>
                       : <div style={{fontSize:20,color:C.teal}}>✓</div>
                     : canScore
-                      ? <button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(null);setScoringFor(name);setScreen("counter");}} style={{...btnStyle(`linear-gradient(135deg, ${C.sky}, ${C.teal})`),padding:"8px 12px",fontSize:12,borderRadius:10}}>SCORE</button>
+                      ? <button onClick={()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(null);setScoringFor(name);navigate("counter");}} style={{...btnStyle(`linear-gradient(135deg, ${C.sky}, ${C.teal})`),padding:"8px 12px",fontSize:12,borderRadius:10}}>SCORE</button>
                       : isHost&&!allowHost
                         ? <div style={{fontSize:10,color:"#ccc",fontWeight:600,textAlign:"center",lineHeight:1.3}}>🔒<br/>locked</div>
                         : <div style={{fontSize:11,color:"#ccc",fontWeight:600}}>waiting…</div>
@@ -910,13 +929,13 @@ function App(){
         {/* Always-visible bottom bar */}
         <div style={{paddingBottom:"calc(12px + env(safe-area-inset-bottom))",paddingTop:12,paddingLeft:"max(14px, env(safe-area-inset-left))",paddingRight:"max(14px, env(safe-area-inset-right))",background:"rgba(242,244,248,0.97)",borderTop:"1px solid rgba(0,0,0,0.05)",boxSizing:"border-box",width:"100%",flexShrink:0}}>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setScreen("fullboard")} style={{flex:1,padding:"13px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.dark,fontWeight:800,fontSize:14,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            <button onClick={()=>navigate("fullboard")} style={{flex:1,padding:"13px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.dark,fontWeight:800,fontSize:14,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
               <IconGrid size={18} color={C.dark}/> Scoreboard
             </button>
-            <button onClick={()=>{setRulesFrom('scorecard');setRulesTab('deal');setScreen("rules");}} style={{padding:"13px 16px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.teal,fontWeight:800,fontSize:13,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
+            <button onClick={()=>{setRulesFrom('scorecard');setRulesTab('deal');navigate("rules");}} style={{padding:"13px 16px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.teal,fontWeight:800,fontSize:13,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
               <IconRules size={16} color={C.teal}/> Rules
             </button>
-            <button onClick={()=>setScreen("splash")} style={{padding:"13px 16px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.coral,fontWeight:800,fontSize:13,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
+            <button onClick={()=>resetNav("splash")} style={{padding:"13px 16px",borderRadius:14,border:"2px solid #e8e8e8",background:"#fff",color:C.coral,fontWeight:800,fontSize:13,cursor:"pointer",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
               <IconRefresh size={16} color={C.coral}/> Leave
             </button>
           </div>
@@ -937,7 +956,7 @@ function App(){
     return(
       <Screen style={{background:C.bg}}>
         <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}cc, #FF70A6)`,padding:"calc(env(safe-area-inset-top) + 18px) 18px 18px",display:"flex",alignItems:"center",gap:13}}>
-          <button onClick={()=>{setEditingRound(null);setScoringFor("");setScreen("scorecard");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <button onClick={()=>{setEditingRound(null);setScoringFor("");goBack();}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div onClick={()=>goToProfile(targetPlayer)} style={{flexShrink:0,cursor:"pointer"}}><Avatar name={targetPlayer} {...avatarProps(targetPlayer,pIdx)} size={48}/></div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:"rgba(255,255,255,0.75)",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
@@ -970,7 +989,7 @@ function App(){
                 <span style={{background:`linear-gradient(135deg, ${C.gold}, ${C.coral})`,color:C.dark,borderRadius:50,padding:"3px 12px",fontSize:11,fontWeight:900,fontFamily:"'Nunito',sans-serif"}}>★ Game Night+ feature</span>
                 <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:C.dark,marginTop:10,marginBottom:6}}>AI Pip Counting</div>
                 <div style={{fontSize:13,color:C.muted,marginBottom:18,lineHeight:1.55}}>Point your camera at your remaining tiles and let AI count the pips instantly. Available with Game Night+.</div>
-                <button onClick={()=>{setUpgradeFrom('counter');setScreen('upgrade');}} style={{...btnStyle(`linear-gradient(135deg, ${C.gold}, ${C.coral})`),width:"100%",fontSize:15,padding:"14px",borderRadius:50,color:C.dark,fontWeight:900,marginBottom:10}}>★ Upgrade to Game Night+ · $3.99</button>
+                <button onClick={()=>{setUpgradeFrom('counter');navigate('upgrade');}} style={{...btnStyle(`linear-gradient(135deg, ${C.gold}, ${C.coral})`),width:"100%",fontSize:15,padding:"14px",borderRadius:50,color:C.dark,fontWeight:900,marginBottom:10}}>★ Upgrade to Game Night+ · $3.99</button>
                 <button onClick={()=>setCameraMode(false)} style={{background:"none",border:`1.5px solid ${C.muted}44`,color:C.muted,borderRadius:50,padding:"11px",width:"100%",fontSize:14,fontWeight:700,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>Use manual counting instead</button>
               </>
             ):(
@@ -1065,14 +1084,14 @@ function App(){
               </div>
               <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:C.gold,lineHeight:1}}>$3.99</div>
               <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginBottom:12}}>one-time · no subscription</div>
-              <button onClick={()=>{setPendingClaimGame(gameCode);setUpgradeFrom('gameover');setScreen('upgrade');}} style={{...btnStyle(`linear-gradient(135deg, ${C.gold}, ${C.coral})`),width:"100%",fontSize:15,padding:"14px",borderRadius:50,color:C.dark,fontWeight:900}}>Upgrade to Game Night+</button>
+              <button onClick={()=>{setPendingClaimGame(gameCode);setUpgradeFrom('gameover');navigate('upgrade');}} style={{...btnStyle(`linear-gradient(135deg, ${C.gold}, ${C.coral})`),width:"100%",fontSize:15,padding:"14px",borderRadius:50,color:C.dark,fontWeight:900}}>Upgrade to Game Night+</button>
               <button onClick={()=>{}} style={{background:"none",border:"none",color:"rgba(255,255,255,0.35)",fontSize:13,fontWeight:600,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginTop:10,padding:"4px"}}>No thanks, skip for now</button>
             </div>
           )}
-          <button onClick={()=>setScreen("fullboard")} style={{...btnStyle("rgba(255,255,255,0.12)"),fontSize:16,padding:"16px",borderRadius:50,border:"1px solid rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <button onClick={()=>navigate("fullboard")} style={{...btnStyle("rgba(255,255,255,0.12)"),fontSize:16,padding:"16px",borderRadius:50,border:"1px solid rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
             <IconGrid size={18} color="#fff"/> Full Scoreboard
           </button>
-          <button onClick={()=>{setGameData(null);setGameCode("");setMyName("");setScreen("splash");}} style={{...btnStyle(`linear-gradient(135deg, ${C.coral}, ${C.pink})`),fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <button onClick={()=>{setGameData(null);setGameCode("");setMyName("");resetNav("splash");}} style={{...btnStyle(`linear-gradient(135deg, ${C.coral}, ${C.pink})`),fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
             <IconTrain size={18} color="#fff"/> New Game
           </button>
         </div>
@@ -1088,7 +1107,7 @@ function App(){
     return(
       <Screen style={{background:C.dark}}>
         <div style={{padding:"calc(env(safe-area-inset-top) + 18px) 16px 16px",display:"flex",alignItems:"center",gap:12}}>
-          <button onClick={()=>setScreen(viewingPlayer?"profile":gameData.status==="done"?"gameover":"scorecard")} style={{background:"rgba(255,255,255,0.09)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.09)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{flex:1}}>
             <div style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:26}}>Full Scoreboard</div>
             <div style={{color:"rgba(255,255,255,0.4)",fontSize:12}}>Double-{startPip} · {players.length} players · Code: {gameCode}</div>
@@ -1142,7 +1161,7 @@ function App(){
                         <td key={pip} style={{padding:"7px 3px",textAlign:"center"}}>
                           {s!==null
                             ?<div
-                                onClick={isMyScore?()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(pip);setScoringFor(name);setScreen("counter");}:undefined}
+                                onClick={isMyScore?()=>{setSelected({});setCameraMode(false);setCameraScore(null);setEditingRound(pip);setScoringFor(name);navigate("counter");}:undefined}
                                 style={{display:"inline-block",minWidth:26,padding:"2px 3px",borderRadius:5,background:isWin?C.gold:"transparent",color:isWin?C.dark:"rgba(255,255,255,0.8)",fontWeight:isWin?900:400,fontSize:13,cursor:isMyScore?"pointer":"default",textDecoration:isMyScore&&!isWin?"underline dotted rgba(255,255,255,0.3)":"none"}}
                               >{s}</div>
                             :<span style={{color:"rgba(255,255,255,0.15)",fontSize:11}}>–</span>
@@ -1203,7 +1222,7 @@ function App(){
         }
         setPendingClaimGame(null);
       }
-      setScreen("splash");
+      resetNav("splash");
     }
     return(
       <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
@@ -1223,7 +1242,7 @@ function App(){
             onKeyDown={e=>e.key==="Enter"&&saveProfile()}
           />
         </div>
-        <button onClick={()=>{setUpgradeFrom('welcome');setScreen('upgrade');}} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",borderRadius:12,background:`${C.gold}18`,border:"none",cursor:"pointer",marginBottom:28}}>
+        <button onClick={()=>{setUpgradeFrom('welcome');navigate('upgrade');}} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",borderRadius:12,background:`${C.gold}18`,border:"none",cursor:"pointer",marginBottom:28}}>
           <span style={{fontSize:14,color:C.gold}}>★</span>
           <span style={{color:C.gold,fontSize:13,fontWeight:700,fontFamily:"'Nunito',sans-serif"}}>Game Night+ saves your stats forever —</span>
           <span style={{color:C.gold,fontSize:13,fontWeight:900,fontFamily:"'Nunito',sans-serif",textDecoration:"underline"}}>learn more</span>
@@ -1244,7 +1263,7 @@ function App(){
       <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
-          <button onClick={()=>setScreen(squadsFrom)} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <IconSquads size={26} color="#fff"/>
             <div>
@@ -1294,11 +1313,11 @@ function App(){
                       <div style={{fontWeight:800,fontSize:16,color:C.dark}}>{sq.name}</div>
                       <div style={{fontSize:12,color:C.muted}}>{sq.members?.length||0} players{sq.lastPlayed?` · ${new Date(sq.lastPlayed).toLocaleDateString()}`:" · Never played"}</div>
                     </div>
-                    <button onClick={e=>{e.stopPropagation();setEditingSquad({...sq});setScreen('squadedit');}} style={{background:`${C.sky}18`,border:`1px solid ${C.sky}55`,borderRadius:8,padding:"6px 12px",cursor:"pointer",color:C.teal,fontSize:12,fontWeight:800,fontFamily:"'Nunito',sans-serif",flexShrink:0}}>Edit</button>
+                    <button onClick={e=>{e.stopPropagation();setEditingSquad({...sq});navigate('squadedit');}} style={{background:`${C.sky}18`,border:`1px solid ${C.sky}55`,borderRadius:8,padding:"6px 12px",cursor:"pointer",color:C.teal,fontSize:12,fontWeight:800,fontFamily:"'Nunito',sans-serif",flexShrink:0}}>Edit</button>
                   </div>
                 );
               })}
-              <button onClick={()=>{const ns={id:Date.now(),name:"New Squad",members:[],lastPlayed:null};setEditingSquad(ns);setScreen('squadedit');}} style={{width:"100%",padding:"14px",borderRadius:14,border:`2px dashed ${C.teal}88`,background:`${C.teal}08`,color:C.teal,fontSize:14,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginTop:4}}>+ New Squad</button>
+              <button onClick={()=>{const ns={id:Date.now(),name:"New Squad",members:[],lastPlayed:null};setEditingSquad(ns);navigate('squadedit');}} style={{width:"100%",padding:"14px",borderRadius:14,border:`2px dashed ${C.teal}88`,background:`${C.teal}08`,color:C.teal,fontSize:14,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginTop:4}}>+ New Squad</button>
             </div>
           )}
 
@@ -1361,7 +1380,7 @@ function App(){
               if(!selectedSquad) return;
               setSetupPlayers(selectedSquad.members.map(n=>({name:n})));
               setSquadsFrom('setup');
-              setScreen('setup');
+              navigate('setup');
             }} style={{...btnStyle(selectedSquad?`linear-gradient(135deg, ${C.coral}, ${C.pink})`:"#ddd"),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10,cursor:selectedSquad?"pointer":"not-allowed"}}>
               <IconTrain size={20} color="#fff"/> {selectedSquad?`Start Game with ${selectedSquad.name}`:"Select a squad to start"}
             </button>
@@ -1380,7 +1399,7 @@ function App(){
     return(
       <Screen style={{background:C.bg}}>
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px"}}>
-          <button onClick={()=>setScreen("squads")} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>{isNew?"New Squad":"Edit Squad"}</div>
         </div>
         <ColorBar/>
@@ -1421,7 +1440,7 @@ function App(){
               const updated=squads.filter(s=>s.id!==editingSquad.id);
               saveSquadsLS(updated);
               setEditingSquad(null);
-              setScreen('squads');
+              goBack();
             }} style={{width:"100%",padding:"13px",borderRadius:14,border:`1.5px solid ${C.coral}55`,background:"transparent",color:C.coral,fontSize:14,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginTop:4}}>Delete Squad</button>
           )}
         </div>
@@ -1431,7 +1450,7 @@ function App(){
             const updated=isNew?[...squads,editingSquad]:squads.map(s=>s.id===editingSquad.id?editingSquad:s);
             saveSquadsLS(updated);
             setEditingSquad(null);
-            setScreen('squads');
+            goBack();
           }} style={{...btnStyle(`linear-gradient(135deg, ${C.teal}, #1a5f82)`),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
             Save Squad
           </button>
@@ -1454,7 +1473,7 @@ function App(){
         {/* Header */}
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 14px) 18px 14px",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <button onClick={()=>setScreen(profileFrom)} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+            <button onClick={()=>{setIsEditingProfile(false);setEditingProfile(null);goBack();}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
             <Avatar name={pl.name} idx={pIdx} size={44} emoji={pl.avatarEmoji||null} photo={pl.avatarPhoto||null} color={pl.avatarColor||null}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
@@ -1501,16 +1520,28 @@ function App(){
         {/* Live preview — only on Customize tab */}
         {profileTab==='customize'&&(
           <div style={{background:"#fff",borderBottom:"1px solid #f0f0f0",padding:"16px 18px",display:"flex",alignItems:"center",gap:14,flexShrink:0}}>
-            <Avatar name={pl.name} idx={pIdx} size={56} emoji={pl.avatarEmoji||null} photo={pl.avatarPhoto||null} color={pl.avatarColor||null}/>
+            <Avatar name={isEditingProfile?editingProfile.name:pl.name} idx={pIdx} size={56}
+              emoji={(isEditingProfile?editingProfile:pl).avatarEmoji||null}
+              photo={(isEditingProfile?editingProfile:pl).avatarPhoto||null}
+              color={(isEditingProfile?editingProfile:pl).avatarColor||null}/>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:C.dark,lineHeight:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
-              {pl.tagline
-                ?<div style={{fontSize:12,color:C.muted,marginTop:2}}>{pl.tagline}</div>
-                :<div style={{fontSize:12,color:"#ccc",marginTop:2}}>No tagline set</div>
-              }
-              <div style={{fontSize:11,color:C.muted,marginTop:3}}>{pl.avatarPhoto?"Photo avatar":pl.avatarEmoji?`Emoji: ${pl.avatarEmoji}`:"Initials avatar"}</div>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:C.dark,lineHeight:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                {isEditingProfile?editingProfile.name:pl.name}
+              </div>
+              <div style={{fontSize:12,color:C.muted,marginTop:2}}>
+                {isEditingProfile?(editingProfile.tagline||"No tagline"):(pl.tagline||"No tagline")}
+              </div>
             </div>
-            <button onClick={()=>{setEditingProfile({...pl});setScreen("profileedit");}} style={{...btnStyle(GR.profile),padding:"10px 16px",fontSize:13,borderRadius:50,flexShrink:0}}>Edit</button>
+            {isEditingProfile
+              ?<button onClick={()=>{setIsEditingProfile(false);setEditingProfile(null);}}
+                  style={{background:"none",border:`1.5px solid #ddd`,borderRadius:50,padding:"8px 14px",color:C.muted,fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",flexShrink:0}}>
+                  Cancel
+                </button>
+              :<button onClick={()=>{setEditingProfile({...pl});setIsEditingProfile(true);}}
+                  style={{...btnStyle(GR.profile),padding:"10px 16px",fontSize:13,borderRadius:50,flexShrink:0}}>
+                  Edit
+                </button>
+            }
           </div>
         )}
 
@@ -1535,7 +1566,7 @@ function App(){
                       setGameData({players:g.players,scores:g.scores,startPip:g.startPip??12,currentRound:0,status:"done"});
                       setGameCode(g.gameCode||"");
                       setMyName(pl.name);
-                      setScreen("fullboard");
+                      navigate("fullboard");
                     }:undefined}
                     style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:i<arr.length-1?"1px solid #f0f0f0":"none",cursor:canView?"pointer":"default"}}>
                       <div>
@@ -1620,191 +1651,140 @@ function App(){
           {/* ── CUSTOMIZE TAB ── */}
           {profileTab==='customize'&&(
             <div>
-              {/* Color swatches — tappable, goes to edit */}
+              {/* Identity */}
               <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
-                <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Avatar Color</div>
-                </div>
-                <div style={{padding:"12px 16px 14px"}}>
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
-                    {AVATAR_COLORS.map((c,i)=>(
-                      <div key={c} style={{width:30,height:30,borderRadius:"50%",background:c,border:`3px solid ${(pl.avatarColor===c||(!pl.avatarColor&&i===pIdx))?"#333":"transparent"}`,boxSizing:"border-box"}}/>
-                    ))}
-                  </div>
-                  <div style={{fontSize:12,color:C.muted}}>Tap <strong>Edit</strong> above to change color, emoji, or photo.</div>
-                </div>
-              </div>
-              {/* Identity summary */}
-              <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
                 <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0"}}>
                   <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Identity</div>
                 </div>
                 <div style={{padding:"0 16px"}}>
                   <div style={{borderBottom:"1px solid #f0f0f0",padding:"10px 0"}}>
                     <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:3}}>Display name</div>
-                    <div style={{fontSize:15,color:C.dark,fontWeight:700}}>{pl.name}</div>
+                    {isEditingProfile
+                      ?<input value={editingProfile.name} onChange={e=>setEditingProfile(prev=>({...prev,name:e.target.value}))}
+                          style={{width:"100%",fontSize:16,border:"none",outline:"none",fontFamily:"'Nunito',sans-serif",color:C.dark,background:"transparent",fontWeight:700}}/>
+                      :<div style={{fontSize:15,color:C.dark,fontWeight:700}}>{pl.name}</div>
+                    }
                   </div>
                   <div style={{padding:"10px 0"}}>
                     <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:3}}>Tagline</div>
-                    <div style={{fontSize:13,color:pl.tagline?C.dark:C.muted}}>{pl.tagline||"None set"}</div>
+                    {isEditingProfile
+                      ?<input value={editingProfile.tagline||""} onChange={e=>setEditingProfile(prev=>({...prev,tagline:e.target.value}))}
+                          placeholder="e.g. Always loses on 12"
+                          style={{width:"100%",fontSize:13,border:"none",outline:"none",fontFamily:"'Nunito',sans-serif",color:C.muted,background:"transparent"}}/>
+                      :<div style={{fontSize:13,color:pl.tagline?C.dark:C.muted}}>{pl.tagline||"None set"}</div>
+                    }
                   </div>
                 </div>
               </div>
+
+              {/* Avatar color */}
+              <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+                <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0"}}>
+                  <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Avatar Color</div>
+                </div>
+                <div style={{padding:"12px 16px"}}>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {AVATAR_COLORS.map((c,i)=>(
+                      <div key={c} onClick={isEditingProfile?()=>setEditingProfile(prev=>({...prev,avatarColor:c,avatarIdx:i})):undefined}
+                        style={{width:30,height:30,borderRadius:"50%",background:c,cursor:isEditingProfile?"pointer":"default",
+                          border:`3px solid ${((isEditingProfile?editingProfile:pl).avatarColor===c||(!((isEditingProfile?editingProfile:pl).avatarColor)&&i===pIdx))?"#333":"transparent"}`,
+                          boxSizing:"border-box",transform:isEditingProfile&&(editingProfile?.avatarColor===c)?"scale(1.2)":"scale(1)",transition:"transform 0.1s"}}/>
+                    ))}
+                  </div>
+                  {!isEditingProfile&&<div style={{marginTop:10,fontSize:12,color:C.muted}}>Tap <strong>Edit</strong> above to change.</div>}
+                </div>
+              </div>
+
+              {/* Emoji picker — only when editing */}
+              {isEditingProfile&&(
+                <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+                  <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0"}}>
+                    <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Emoji <span style={{fontSize:11,color:C.muted,fontWeight:400,textTransform:"none",letterSpacing:0}}>(replaces initials)</span></div>
+                  </div>
+                  <div style={{padding:"12px 16px"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(8,1fr)",gap:6,marginBottom:10}}>
+                      {AVATAR_EMOJIS.map(em=>(
+                        <div key={em} onClick={()=>setEditingProfile(prev=>({...prev,avatarEmoji:prev.avatarEmoji===em?null:em,avatarPhoto:null}))}
+                          style={{width:36,height:36,borderRadius:"50%",background:editingProfile.avatarEmoji===em?`${C.teal}22`:"#f5f5f5",
+                            border:`2px solid ${editingProfile.avatarEmoji===em?C.teal:"transparent"}`,
+                            display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,cursor:"pointer"}}>
+                          {em}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{fontSize:12,color:C.muted,flexShrink:0}}>Or type any:</div>
+                      <input value={editingProfile.avatarEmoji||""} onChange={e=>{const v=e.target.value.slice(-2);setEditingProfile(prev=>({...prev,avatarEmoji:v||null,avatarPhoto:null}));}}
+                        placeholder="✨"
+                        style={{width:52,fontSize:22,textAlign:"center",border:`1.5px solid #eee`,borderRadius:10,padding:"4px 6px",outline:"none",fontFamily:"sans-serif"}}/>
+                      {editingProfile.avatarEmoji&&<button onClick={()=>setEditingProfile(prev=>({...prev,avatarEmoji:null}))}
+                        style={{background:"none",border:"none",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>Clear</button>}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Photo upload — only when editing */}
+              {isEditingProfile&&(
+                <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+                  <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Photo</div>
+                    <span style={{fontSize:10,background:C.gold,color:C.dark,borderRadius:50,padding:"1px 7px",fontWeight:800}}>Game Night+</span>
+                  </div>
+                  <div style={{padding:"12px 16px"}}>
+                    <input ref={photoRef} type="file" accept="image/*" onChange={async e=>{
+                      const file=e.target.files?.[0]; if(!file) return;
+                      const reader=new FileReader();
+                      reader.onload=()=>setEditingProfile(prev=>({...prev,avatarPhoto:reader.result,avatarEmoji:null}));
+                      reader.readAsDataURL(file); e.target.value="";
+                    }} style={{display:"none"}}/>
+                    {editingProfile.avatarPhoto
+                      ?<div style={{display:"flex",alignItems:"center",gap:10}}>
+                          <img src={editingProfile.avatarPhoto} style={{width:48,height:48,borderRadius:"50%",objectFit:"cover",border:`2px solid ${C.teal}`}} alt="avatar"/>
+                          <button onClick={()=>photoRef.current.click()} style={{padding:"7px 14px",borderRadius:50,border:`1.5px solid ${C.sky}`,background:"transparent",color:C.sky,fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>Change</button>
+                          <button onClick={()=>setEditingProfile(prev=>({...prev,avatarPhoto:null}))} style={{padding:"7px 14px",borderRadius:50,border:"1.5px solid #eee",background:"transparent",color:C.muted,fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>Remove</button>
+                        </div>
+                      :<button onClick={()=>isPro?photoRef.current.click():navigate("upgrade")}
+                          style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${isPro?C.sky:"#eee"}`,background:`${isPro?C.sky:"#f5f5f5"}11`,cursor:"pointer",width:"100%",fontFamily:"'Nunito',sans-serif"}}>
+                          <IconCamera size={20} color={isPro?C.sky:C.muted}/>
+                          <div style={{textAlign:"left"}}>
+                            <div style={{fontSize:13,fontWeight:800,color:isPro?C.sky:C.muted}}>{isPro?"Upload a photo":"Unlock with Game Night+"}</div>
+                            <div style={{fontSize:11,color:C.muted}}>Replaces initials and emoji</div>
+                          </div>
+                        </button>
+                    }
+                  </div>
+                </div>
+              )}
+
+              {/* Save / Upgrade buttons — only when editing */}
+              {isEditingProfile&&(
+                <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+                  <button onClick={()=>{
+                    const updated={...editingProfile};
+                    savePlayersLS(allPlayers.map(p=>p.id===updated.id?updated:p));
+                    setViewingPlayer(updated);
+                    setIsEditingProfile(false);
+                    setEditingProfile(null);
+                  }} style={{...btnStyle(GR.profile),width:"100%",fontSize:16,padding:"15px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+                    Save Profile
+                  </button>
+                  {!isPro&&(
+                    <button onClick={()=>{setUpgradeFrom("profile");navigate("upgrade");}}
+                      style={{width:"100%",padding:"11px",borderRadius:50,border:`1.5px solid ${C.gold}`,background:`${C.gold}14`,color:"#9a6800",fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
+                      <span style={{fontSize:14}}>⭐</span> Game Night+ — sync across devices
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
         </div>
         <BottomBar>
-          <button onClick={()=>{setSetupPlayers([{name:pl.name},{name:""}]);setScreen('setup');}} style={{...btnStyle(`linear-gradient(135deg, ${C.teal}, #1a5f82)`),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <button onClick={()=>{setSetupPlayers([{name:pl.name},{name:""}]);navigate('setup');}} style={{...btnStyle(`linear-gradient(135deg, ${C.teal}, #1a5f82)`),width:"100%",fontSize:16,padding:"16px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
             <IconTrain size={20} color="#fff"/> Start game with {pl.name} →
           </button>
-        </BottomBar>
-      </Screen>
-    );
-  }
-
-  // ── PROFILE EDIT ───────────────────────────────────────────────────────────
-  if(screen==="profileedit"&&editingProfile){
-    const ep=editingProfile;
-    const pIdx=ep.avatarIdx??0;
-
-    function saveProfileEdit(){
-      const updated={...ep};
-      const newPlayers=allPlayers.map(p=>p.id===updated.id?updated:p);
-      savePlayersLS(newPlayers);
-      setViewingPlayer(updated);
-      setEditingProfile(null);
-      setScreen("profile");
-    }
-
-    async function handleProfilePhoto(e){
-      const file=e.target.files?.[0];
-      if(!file) return;
-      const reader=new FileReader();
-      reader.onload=()=>setEditingProfile(prev=>({...prev,avatarPhoto:reader.result,avatarEmoji:null}));
-      reader.readAsDataURL(file);
-      e.target.value="";
-    }
-
-    return(
-      <Screen style={{background:C.bg}}>
-        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 14px) 18px 14px"}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <button onClick={()=>{setEditingProfile(null);setScreen("profile");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-            {/* Live preview avatar */}
-            <Avatar name={ep.name} idx={pIdx} size={44} emoji={ep.avatarEmoji||null} photo={ep.avatarPhoto||null} color={ep.avatarColor||null}/>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:"#fff",lineHeight:1}}>Edit Profile</div>
-              <div style={{color:"rgba(255,255,255,0.7)",fontSize:12,marginTop:2}}>Changes save when you tap Save</div>
-            </div>
-          </div>
-        </div>
-        <ColorBar/>
-
-        <div style={{padding:"12px 14px",paddingBottom:"calc(100px + env(safe-area-inset-bottom))"}}>
-
-          {/* Identity */}
-          <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
-            <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0"}}>
-              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Identity</div>
-            </div>
-            <div style={{padding:"0 16px"}}>
-              <div style={{borderBottom:"1px solid #f0f0f0",padding:"10px 0"}}>
-                <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Display name</div>
-                <input value={ep.name} onChange={e=>setEditingProfile(prev=>({...prev,name:e.target.value}))}
-                  style={{width:"100%",fontSize:16,border:"none",outline:"none",fontFamily:"'Nunito',sans-serif",color:C.dark,background:"transparent"}}/>
-              </div>
-              <div style={{padding:"10px 0"}}>
-                <div style={{fontSize:10,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Tagline</div>
-                <input value={ep.tagline||""} onChange={e=>setEditingProfile(prev=>({...prev,tagline:e.target.value}))}
-                  placeholder="e.g. Always loses on 12"
-                  style={{width:"100%",fontSize:14,border:"none",outline:"none",fontFamily:"'Nunito',sans-serif",color:C.muted,background:"transparent"}}/>
-              </div>
-            </div>
-          </div>
-
-          {/* Avatar */}
-          <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
-            <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0"}}>
-              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Avatar</div>
-            </div>
-
-            {/* Color picker */}
-            <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0"}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.dark,marginBottom:8}}>Color</div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {AVATAR_COLORS.map((c,i)=>(
-                  <div key={c} onClick={()=>setEditingProfile(prev=>({...prev,avatarColor:c,avatarIdx:i}))}
-                    style={{width:30,height:30,borderRadius:"50%",background:c,cursor:"pointer",border:`3px solid ${ep.avatarColor===c||(!ep.avatarColor&&i===pIdx)?"#333":"transparent"}`,boxSizing:"border-box",transition:"transform 0.1s",transform:ep.avatarColor===c?"scale(1.15)":"scale(1)"}}/>
-                ))}
-              </div>
-            </div>
-
-            {/* Emoji picker */}
-            <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0"}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.dark,marginBottom:8}}>Emoji <span style={{fontSize:11,color:C.muted,fontWeight:400}}>(replaces initials)</span></div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(8,1fr)",gap:6,marginBottom:10}}>
-                {AVATAR_EMOJIS.map(em=>(
-                  <div key={em} onClick={()=>setEditingProfile(prev=>({...prev,avatarEmoji:prev.avatarEmoji===em?null:em,avatarPhoto:null}))}
-                    style={{width:36,height:36,borderRadius:"50%",background:ep.avatarEmoji===em?`${C.teal}22`:"#f5f5f5",border:`2px solid ${ep.avatarEmoji===em?C.teal:"transparent"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,cursor:"pointer"}}>
-                    {em}
-                  </div>
-                ))}
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{fontSize:12,color:C.muted,flexShrink:0}}>Or type any:</div>
-                <input value={ep.avatarEmoji||""} onChange={e=>{const v=e.target.value.slice(-2);setEditingProfile(prev=>({...prev,avatarEmoji:v||null,avatarPhoto:null}));}}
-                  placeholder="✨"
-                  style={{width:52,fontSize:22,textAlign:"center",border:`1.5px solid #eee`,borderRadius:10,padding:"4px 6px",outline:"none",fontFamily:"sans-serif"}}/>
-                {ep.avatarEmoji&&<button onClick={()=>setEditingProfile(prev=>({...prev,avatarEmoji:null}))} style={{background:"none",border:"none",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>Clear</button>}
-              </div>
-            </div>
-
-            {/* Photo upload */}
-            <div style={{padding:"12px 16px"}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.dark,marginBottom:8}}>
-                Photo <span style={{fontSize:10,background:C.gold,color:C.dark,borderRadius:50,padding:"1px 7px",fontWeight:800,marginLeft:4}}>Game Night+</span>
-              </div>
-              <input ref={photoRef} type="file" accept="image/*" onChange={handleProfilePhoto} style={{display:"none"}}/>
-              {ep.avatarPhoto
-                ?<div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <img src={ep.avatarPhoto} style={{width:48,height:48,borderRadius:"50%",objectFit:"cover",border:`2px solid ${C.teal}`}} alt="avatar"/>
-                    <button onClick={()=>photoRef.current.click()} style={{padding:"7px 14px",borderRadius:50,border:`1.5px solid ${C.sky}`,background:"transparent",color:C.sky,fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>Change photo</button>
-                    <button onClick={()=>setEditingProfile(prev=>({...prev,avatarPhoto:null}))} style={{padding:"7px 14px",borderRadius:50,border:"1.5px solid #eee",background:"transparent",color:C.muted,fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>Remove</button>
-                  </div>
-                :<button onClick={()=>isPro?photoRef.current.click():setScreen("upgrade")}
-                    style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${isPro?C.sky:"#eee"}`,background:`${isPro?C.sky:"#f5f5f5"}11`,cursor:"pointer",width:"100%",fontFamily:"'Nunito',sans-serif"}}>
-                    <IconCamera size={20} color={isPro?C.sky:C.muted}/>
-                    <div style={{textAlign:"left"}}>
-                      <div style={{fontSize:13,fontWeight:800,color:isPro?C.sky:C.muted}}>{isPro?"Take or upload a photo":"Unlock with Game Night+"}</div>
-                      <div style={{fontSize:11,color:C.muted}}>Replaces initials and emoji</div>
-                    </div>
-                  </button>
-              }
-            </div>
-          </div>
-
-          {/* Live preview */}
-          <div style={{background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
-            <Avatar name={ep.name} idx={pIdx} size={52} emoji={ep.avatarEmoji||null} photo={ep.avatarPhoto||null} color={ep.avatarColor||null}/>
-            <div>
-              <div style={{fontWeight:800,fontSize:16,color:C.dark}}>{ep.name||"Your name"}</div>
-              {ep.tagline&&<div style={{fontSize:12,color:C.muted,marginTop:2}}>{ep.tagline}</div>}
-            </div>
-          </div>
-
-        </div>
-        <BottomBar>
-          <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%"}}>
-            <button onClick={saveProfileEdit} style={{...btnStyle(GR.profile),width:"100%",fontSize:16,padding:"15px",borderRadius:50,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-              Save Profile
-            </button>
-            {!isPro&&(
-              <button onClick={()=>{setUpgradeFrom("profileedit");setScreen("upgrade");}} style={{width:"100%",padding:"11px",borderRadius:50,border:`1.5px solid ${C.gold}`,background:`${C.gold}14`,color:"#9a6800",fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
-                <span style={{fontSize:14}}>⭐</span> Game Night+ — sync profile across devices
-              </button>
-            )}
-          </div>
         </BottomBar>
       </Screen>
     );
@@ -1817,7 +1797,7 @@ function App(){
       <Screen style={{background:C.bg}}>
         <div style={{background:GR.upgrade,padding:"calc(env(safe-area-inset-top) + 16px) 18px 20px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-            <button onClick={()=>setScreen(upgradeFrom)} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+            <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
             <span style={{background:"rgba(255,255,255,0.25)",color:"#fff",borderRadius:50,padding:"4px 14px",fontSize:11,fontWeight:900,fontFamily:"'Nunito',sans-serif",letterSpacing:0.5}}>Game Night+</span>
           </div>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:"#fff",lineHeight:1.1}}>Save every game night forever</div>
@@ -1838,7 +1818,7 @@ function App(){
             <div style={{color:C.muted,fontSize:13,marginTop:2}}>one-time · no subscription</div>
           </div>
           <button onClick={()=>alert("Coming soon — payment integration in progress.")} style={{...btnStyle("linear-gradient(135deg, #c07800, #e8a020)"),width:"100%",fontSize:17,padding:"18px",borderRadius:50,fontWeight:900,letterSpacing:0.5,boxShadow:"0 6px 24px rgba(192,120,0,0.35)"}}>Upgrade to Game Night+</button>
-          <button onClick={()=>setScreen(upgradeFrom)} style={{display:"block",width:"100%",background:"none",border:"none",color:C.muted,fontSize:14,fontWeight:600,fontFamily:"'Nunito',sans-serif",cursor:"pointer",padding:"14px 8px",textAlign:"center"}}>No thanks</button>
+          <button onClick={()=>goBack()} style={{display:"block",width:"100%",background:"none",border:"none",color:C.muted,fontSize:14,fontWeight:600,fontFamily:"'Nunito',sans-serif",cursor:"pointer",padding:"14px 8px",textAlign:"center"}}>No thanks</button>
         </div>
       </Screen>
     );
@@ -1884,7 +1864,7 @@ function App(){
         {/* Header */}
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
-          <button onClick={()=>setScreen(rulesFrom)} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+          <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <IconRules size={26} color="#fff"/>
             <div>
