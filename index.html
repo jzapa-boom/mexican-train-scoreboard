@@ -841,7 +841,7 @@ function App(){
                         </div>
                         {/* Toggle */}
                         <div onClick={()=>setPendingAllowHost(v=>!v)}
-                          style={{width:44,height:24,borderRadius:12,background:pendingAllowHost?C.teal:"#ddd",position:"relative",cursor:"pointer",flexShrink:0,transition:"background 0.2s"}}>
+                          style={{width:44,height:24,borderRadius:12,background:pendingAllowHost?C.teal:"#ddd",position:"relative",cursor:"pointer",flexShrink:0,transition:"background 0.2s",touchAction:"manipulation",WebkitTapHighlightColor:"transparent"}}>
                           <div style={{position:"absolute",top:3,left:pendingAllowHost?20:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/>
                         </div>
                       </div>
@@ -874,7 +874,7 @@ function App(){
                         <div style={{fontSize:11,color:C.muted,marginTop:2}}>Useful if you can't reach your phone</div>
                       </div>
                       <div onClick={()=>setPendingAllowHost(v=>!v)}
-                        style={{width:44,height:24,borderRadius:12,background:pendingAllowHost?C.teal:"#ddd",position:"relative",cursor:"pointer",flexShrink:0,transition:"background 0.2s"}}>
+                        style={{width:44,height:24,borderRadius:12,background:pendingAllowHost?C.teal:"#ddd",position:"relative",cursor:"pointer",flexShrink:0,transition:"background 0.2s",touchAction:"manipulation",WebkitTapHighlightColor:"transparent"}}>
                         <div style={{position:"absolute",top:3,left:pendingAllowHost?20:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/>
                       </div>
                     </div>
@@ -945,7 +945,14 @@ function App(){
                       :gap>0?<Badge label={`${gap} behind`} bg="#f0f0f0"/>:null
                     }
                     {isMe&&!isHost&&(
-                      <Badge label={allowHost?"Host: on":"Host: off"} bg={allowHost?`${C.teal}22`:"#f0f0f0"}/>
+                      <button onClick={()=>{
+                        const updates={};
+                        updates[`games/${gameCode}/playerPrefs/${myName}/allowHostScore`]=!allowHost;
+                        fb.update(fb.ref(fb.db),updates);
+                      }} style={{display:"flex",alignItems:"center",gap:4,background:allowHost?`${C.teal}18`:"#f0f0f0",border:`1px solid ${allowHost?C.teal+"44":"#ddd"}`,borderRadius:50,padding:"3px 8px",cursor:"pointer",fontFamily:"'Nunito',sans-serif",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
+                        <div style={{width:7,height:7,borderRadius:"50%",background:allowHost?C.teal:"#bbb",flexShrink:0}}/>
+                        <span style={{fontSize:10,fontWeight:800,color:allowHost?C.teal:C.muted,whiteSpace:"nowrap"}}>{allowHost?"Host: on":"Host: off"}</span>
+                      </button>
                     )}
                   </div>
                 </div>
