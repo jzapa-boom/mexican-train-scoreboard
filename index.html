@@ -85,8 +85,82 @@ function genCode() {
   return c;
 }
 
+// ── Skins ─────────────────────────────────────────────────────────────────
+const SKINS = {
+  default: {
+    id:"default", name:"Default", free:true, emoji:"🎨",
+    bg:"#F2F4F8",
+    dark:"#1A1A2A", muted:"#888",
+    sky:"#70D6FF", pink:"#FF70A6", coral:"#FF9770",
+    gold:"#FFD670", lime:"#E9FF70", teal:"#2EC4B6",
+    cardBg:"#fff", cardBorder:"transparent",
+    bar:["#70D6FF","#FF70A6","#FF9770","#FFD670","#E9FF70","#2EC4B6"],
+    avatars:["#70D6FF","#FF70A6","#FF9770","#FFD670","#E9FF70","#2EC4B6","#b388ff","#ff8a65","#80cbc4","#f48fb1","#a5d6a7","#90caf9"],
+    gr:{
+      ingame:"linear-gradient(135deg, #FF9770, #FF70A6)",
+      onboarding:"linear-gradient(135deg, #1a8a80, #2a9fd6)",
+      profile:"linear-gradient(135deg, #6c3fbf, #9b59d0)",
+      rules:"linear-gradient(135deg, #2d6a4f, #40916c)",
+      upgrade:"linear-gradient(135deg, #c07800, #e8a020)",
+    },
+  },
+  diadelosmuertos: {
+    id:"diadelosmuertos", name:"Día de los Muertos", free:false, emoji:"💀",
+    bg:"#1a0030",
+    dark:"#ffdd00", muted:"#cc88ff",
+    sky:"#00b4d8", pink:"#ff006e", coral:"#ff9500",
+    gold:"#ffdd00", lime:"#00ff88", teal:"#cc00ff",
+    cardBg:"#240040", cardBorder:"#ff006e33",
+    bar:["#ff006e","#ff9500","#ffdd00","#7b2d8b","#00b4d8","#e63946"],
+    avatars:["#ff006e","#ff9500","#ffdd00","#7b2d8b","#00b4d8","#e63946","#cc00ff","#00ff88","#ff4d6d","#f72585","#4cc9f0","#7209b7"],
+    gr:{
+      ingame:"linear-gradient(135deg, #7b2d8b, #ff006e)",
+      onboarding:"linear-gradient(135deg, #4a0080, #cc6600)",
+      profile:"linear-gradient(135deg, #1a0040, #7b2d8b)",
+      rules:"linear-gradient(135deg, #00554d, #006994)",
+      upgrade:"linear-gradient(135deg, #7b2d8b, #ff9500)",
+    },
+  },
+  neonnnight: {
+    id:"neonnnight", name:"Neon Night", free:false, emoji:"⚡",
+    bg:"#0a0a0a",
+    dark:"#ffffff", muted:"#888",
+    sky:"#00ffff", pink:"#ff00ff", coral:"#ff006e",
+    gold:"#ffdd00", lime:"#00ff88", teal:"#00ffff",
+    cardBg:"#111111", cardBorder:"#ff00ff22",
+    bar:["#ff00ff","#00ffff","#ff006e","#7700ff","#00ff88","#ff9900"],
+    avatars:["#ff00ff","#00ffff","#ff006e","#7700ff","#00ff88","#ff9900","#ff0055","#00ddff","#dd00ff","#ffcc00","#00ffaa","#ff5500"],
+    gr:{
+      ingame:"linear-gradient(135deg, #7700ff, #ff00ff)",
+      onboarding:"linear-gradient(135deg, #003366, #0077ff)",
+      profile:"linear-gradient(135deg, #330066, #7700ff)",
+      rules:"linear-gradient(135deg, #003322, #007744)",
+      upgrade:"linear-gradient(135deg, #664400, #ff9900)",
+    },
+  },
+  tropical: {
+    id:"tropical", name:"Tropical", free:false, emoji:"🌴",
+    bg:"#e8f8f5",
+    dark:"#004d40", muted:"#4db6ac",
+    sky:"#00d4aa", pink:"#ef476f", coral:"#ff6b6b",
+    gold:"#ffd166", lime:"#06d6a0", teal:"#118ab2",
+    cardBg:"#ffffff", cardBorder:"#00d4aa22",
+    bar:["#00d4aa","#ff6b6b","#ffd166","#06d6a0","#118ab2","#ef476f"],
+    avatars:["#00d4aa","#ef476f","#ffd166","#06d6a0","#118ab2","#ff6b6b","#00b4d8","#f77f00","#80ed99","#e63946","#48cae4","#f4a261"],
+    gr:{
+      ingame:"linear-gradient(135deg, #ef476f, #ff6b6b)",
+      onboarding:"linear-gradient(135deg, #006994, #00a86b)",
+      profile:"linear-gradient(135deg, #118ab2, #06d6a0)",
+      rules:"linear-gradient(135deg, #1b6b3a, #2d9a6b)",
+      upgrade:"linear-gradient(135deg, #c07000, #f4a261)",
+    },
+  },
+};
+
 // ── Palette ────────────────────────────────────────────────────────────────
 // ── Category header gradients ─────────────────────────────────────────────
+// C and GR are now derived inside App from the active skin.
+// These are the fallback defaults used outside App (e.g. Avatar, Badge):
 const GR = {
   ingame:     "linear-gradient(135deg, #FF9770, #FF70A6)",
   onboarding: "linear-gradient(135deg, #1a8a80, #2a9fd6)",
@@ -225,10 +299,11 @@ function Badge({label,bg=C.sky}){
   return<span style={{background:bg,color:C.dark,borderRadius:50,padding:"3px 9px",fontSize:11,fontWeight:800,fontFamily:"'Nunito',sans-serif",letterSpacing:0.3,whiteSpace:"nowrap"}}>{label}</span>;
 }
 
-function ColorBar(){
+function ColorBar({colors}){
+  const bars=colors||[C.sky,C.pink,C.coral,C.gold,C.lime,C.teal];
   return(
     <div style={{display:"flex",height:7,flexShrink:0,overflow:"hidden"}}>
-      {[C.sky,C.pink,C.coral,C.gold,C.lime,C.teal].map((c,i)=>(
+      {bars.map((c,i)=>(
         <div key={i} style={{flex:1,background:c,animation:`slideIn 0.35s ease-out ${i*0.06}s both`}}/>
       ))}
       <style>{`@keyframes slideIn{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}`}</style>
@@ -260,6 +335,22 @@ const fb = window.__fb;
 
 function App(){
   const [screen,setScreen]           = useState("splash");
+
+  // ── Active skin (localStorage, per device) ─────────────────────────────
+  const [skinId,setSkinId] = useState(()=>localStorage.getItem('mxt-skin')||'default');
+  const skin = SKINS[skinId]||SKINS.default;
+  // Derive C and GR from active skin — these shadow the module-level constants
+  const C = {
+    sky:skin.sky, pink:skin.pink, coral:skin.coral,
+    gold:skin.gold, lime:skin.lime, teal:skin.teal,
+    dark:skin.dark, muted:skin.muted, bg:skin.bg,
+  };
+  const GR = skin.gr;
+  const AVATAR_COLORS = skin.avatars;
+  function applySkin(id){
+    setSkinId(id);
+    localStorage.setItem('mxt-skin',id);
+  }
   const [navHistory,setNavHistory]   = useState([]);
 
   function navigate(to){
@@ -358,6 +449,20 @@ function App(){
           navigate('welcome');
         }
         setAuthReady(true);
+        // Deep link: check for ?join=CODE in URL
+        const params=new URLSearchParams(window.location.search);
+        const deepCode=params.get('join');
+        if(deepCode&&deepCode.length===4){
+          const code=deepCode.toUpperCase();
+          const gameSnap=await fb.get(fb.ref(fb.db,`games/${code}`));
+          if(gameSnap.exists()&&gameSnap.val().status!=='done'){
+            setGameData(gameSnap.val());
+            setGameCode(code);
+            navigate('pickname');
+            // Clean URL without reloading
+            window.history.replaceState({},'',window.location.pathname);
+          }
+        }
       } else {
         fb.signInAnonymously(fb.auth).catch(()=>{});
       }
@@ -541,6 +646,21 @@ function App(){
     setTimeout(()=>setCopied(false),2000);
   }
 
+  function shareInvite(){
+    const url=`${window.location.origin}${window.location.pathname}?join=${gameCode}`;
+    if(navigator.share){
+      navigator.share({
+        title:"Mexican Train Game Night",
+        text:`Join my Mexican Train game! Use code ${gameCode} or tap the link.`,
+        url,
+      }).catch(()=>{});
+    } else {
+      navigator.clipboard?.writeText(url).catch(()=>{});
+      setCopied(true);
+      setTimeout(()=>setCopied(false),2000);
+    }
+  }
+
   function togglePro(){
     setIsPro(function(prev){
       var next=!prev;
@@ -628,7 +748,7 @@ function App(){
           </div>
         </div>
       </div>
-      <ColorBar/>
+      <ColorBar colors={skin.bar}/>
       <div style={{margin:"10px 12px 0",background:"#fff",borderRadius:18,padding:"24px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
         <input
           value={joinInput}
@@ -660,7 +780,7 @@ function App(){
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>Game Setup</div>
           <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:3}}>Configure your game</div>
         </div>
-        <ColorBar/>
+        <ColorBar colors={skin.bar}/>
 
         {/* Single card with section dividers */}
         <div style={{margin:"10px 12px 24px",background:"#fff",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
@@ -804,14 +924,15 @@ function App(){
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)",pointerEvents:"none"}}/>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:30,color:"#fff"}}>Who are you?</div>
           <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:4}}>Tap your name to join</div>
-          <button onClick={copyCode} style={{display:"inline-flex",alignItems:"center",gap:8,marginTop:14,background:"rgba(255,255,255,0.2)",border:"none",borderRadius:50,padding:"6px 14px",cursor:"pointer"}}>
-            <span style={{color:"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,letterSpacing:1}}>GAME CODE</span>
-            <span style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:22,letterSpacing:4}}>{gameCode}</span>
-            <IconCopy size={16} color={copied?"#fff":"rgba(255,255,255,0.6)"}/>
+          {/* Full-width share/invite button */}
+          <button onClick={shareInvite} style={{display:"flex",alignItems:"center",gap:10,marginTop:14,background:"rgba(255,255,255,0.2)",border:"none",borderRadius:50,padding:"9px 18px",cursor:"pointer",width:"100%",touchAction:"manipulation",WebkitTapHighlightColor:"transparent"}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <span style={{color:"rgba(255,255,255,0.75)",fontSize:12,fontWeight:700,letterSpacing:0.5}}>Invite others</span>
+            <span style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:22,letterSpacing:4,flex:1,textAlign:"center"}}>{gameCode}</span>
+            <span style={{color:"rgba(255,255,255,0.6)",fontSize:12,fontWeight:700}}>{copied?"Copied!":"Tap to share"}</span>
           </button>
-          {copied&&<div style={{color:"rgba(255,255,255,0.7)",fontSize:12,marginTop:6}}>Copied!</div>}
         </div>
-        <ColorBar/>
+        <ColorBar colors={skin.bar}/>
         <div style={{margin:"10px 14px 0",background:"#fff",borderRadius:22,padding:"12px 16px",boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
           {playerList.map((name,i)=>{
             const isSelected=selectedName===name;
@@ -910,17 +1031,20 @@ function App(){
             </div>
             {/* Center: domino — truly centered */}
             <DoubleDomino value={Math.min(currentRound,12)} height={44}/>
-            {/* Right: game code pill — absolutely right */}
+            {/* Right: invite share button */}
             <div style={{position:"absolute",right:0}}>
-              <button onClick={copyCode} style={{background:"rgba(255,255,255,0.18)",border:"none",borderRadius:50,padding:"6px 14px",cursor:"pointer",textAlign:"center"}}>
-                <div style={{fontSize:8,fontWeight:700,color:"rgba(255,255,255,0.65)",letterSpacing:1,textTransform:"uppercase"}}>CODE</div>
+              <button onClick={shareInvite} style={{background:"rgba(255,255,255,0.18)",border:"none",borderRadius:50,padding:"6px 14px",cursor:"pointer",textAlign:"center",touchAction:"manipulation",WebkitTapHighlightColor:"transparent"}}>
+                <div style={{fontSize:8,fontWeight:700,color:"rgba(255,255,255,0.65)",letterSpacing:1,display:"flex",alignItems:"center",gap:3,justifyContent:"center"}}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                  {copied?"COPIED!":"INVITE"}
+                </div>
                 <div style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:18,letterSpacing:3,lineHeight:1.1}}>{gameCode}</div>
               </button>
             </div>
           </div>
           {copied&&<div style={{textAlign:"center",color:"rgba(255,255,255,0.7)",fontSize:11,marginTop:4}}>Copied!</div>}
         </div>
-        <ColorBar/>
+        <ColorBar colors={skin.bar}/>
         <div style={{padding:"10px 12px 4px",flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
           {rank.map((name,i)=>{
             const total=totals[name],wins=getWins(name);
@@ -930,7 +1054,7 @@ function App(){
             const allowHost=gameData?.playerPrefs?.[name]?.allowHostScore===true;
             const canScore=isMe||(isHost&&(name===gameData?.hostName||allowHost));
             return(
-              <div key={name} style={{background:"#fff",borderRadius:20,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:10,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent"}}>
+              <div key={name} style={{background:skin.cardBg||"#fff",borderRadius:20,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:10,boxShadow:isMe?`0 4px 20px ${C.sky}33`:i===0?`0 4px 20px ${C.coral}22`:"0 2px 10px rgba(0,0,0,0.05)",border:isMe?`2px solid ${C.sky}55`:i===0?`2px solid ${C.coral}33`:"2px solid transparent"}}>
                 <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:i===0?C.coral:"#bbb",width:22,flexShrink:0}}>{i+1}</div>
                 <div onClick={()=>goToProfile(name)} style={{flexShrink:0,cursor:"pointer"}}><Avatar name={name} {...avatarProps(name,players.indexOf(name))} size={42}/></div>
                 <div style={{flex:1,minWidth:0}}>
@@ -1028,7 +1152,7 @@ function App(){
             <div style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:"clamp(38px,11vw,52px)",lineHeight:1}}>{score}</div>
           </div>
         </div>
-        <ColorBar/>
+        <ColorBar colors={skin.bar}/>
         <div style={{display:"flex",margin:"12px 12px 0",background:"#fff",borderRadius:14,padding:4,boxShadow:"0 2px 10px rgba(0,0,0,0.06)"}}>
           {[["Tap Tiles",false],["Camera AI",true]].map(([label,cam])=>(
             <button key={label} onClick={()=>{setCameraMode(cam);if(!cam)setCameraScore(null);}} style={{flex:1,padding:"11px 0",borderRadius:11,border:"none",cursor:"pointer",minHeight:46,background:cameraMode===cam?`linear-gradient(135deg, ${C.coral}, ${C.pink})`:"transparent",color:cameraMode===cam?"#fff":C.muted,fontWeight:800,fontSize:"clamp(13px,3.5vw,15px)",fontFamily:"'Nunito',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
@@ -1038,7 +1162,7 @@ function App(){
           ))}
         </div>
         {cameraMode&&(
-          <div style={{margin:"12px 12px 0",background:"#fff",borderRadius:20,padding:20,textAlign:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+          <div style={{margin:"12px 12px 0",background:skin.cardBg||"#fff",borderRadius:20,padding:20,textAlign:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
             {!isPro?(
               <>
                 <div style={{width:64,height:64,borderRadius:16,background:`${C.gold}18`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><IconCamera size={36} color={C.gold}/></div>
@@ -1071,7 +1195,7 @@ function App(){
           </div>
         )}
         {!cameraMode&&(
-          <div style={{margin:"12px 12px 0",background:"#fff",borderRadius:20,padding:14,boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+          <div style={{margin:"12px 12px 0",background:skin.cardBg||"#fff",borderRadius:20,padding:14,boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
             <div style={{fontSize:11,fontWeight:800,color:C.muted,textAlign:"center",textTransform:"uppercase",letterSpacing:1.5,marginBottom:12}}>Tap to add · tap again to increase count · tap at 13 to reset</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(70px, 1fr))",gap:8,justifyItems:"center"}}>
               {tiles.map(val=>(
@@ -1329,7 +1453,7 @@ function App(){
           </div>
         </div>
         {/* Color Bar */}
-        <ColorBar/>
+        <ColorBar colors={skin.bar}/>
         {/* Tab Nav */}
         <div style={{background:"#fff",borderBottom:"1px solid #eee",display:"flex",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
           {tabs.map(([key,label])=>{
@@ -1458,7 +1582,7 @@ function App(){
           <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>{isNew?"New Squad":"Edit Squad"}</div>
         </div>
-        <ColorBar/>
+        <ColorBar colors={skin.bar}/>
         <div style={{padding:"12px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
           <div style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
             <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:8}}>Squad Name</div>
@@ -1540,7 +1664,7 @@ function App(){
             </div>
           </div>
         </div>
-        <ColorBar/>
+        <ColorBar colors={skin.bar}/>
 
         {/* Stats bar — always visible */}
         <div style={{background:"#fff",borderBottom:"1px solid #f0f0f0",flexShrink:0}}>
@@ -1833,6 +1957,45 @@ function App(){
                   )}
                 </div>
               )}
+
+              {/* Skin selector */}
+              <div style={{background:C.cardBg||"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+                <div style={{padding:"10px 16px",borderBottom:`1px solid ${C.cardBorder||"#f0f0f0"}`}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Theme</div>
+                    {!isPro&&<span style={{background:C.gold,color:C.dark,borderRadius:50,padding:"2px 8px",fontSize:10,fontWeight:800}}>Game Night+</span>}
+                  </div>
+                </div>
+                <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
+                  {Object.values(SKINS).map(s=>{
+                    const active=skinId===s.id;
+                    const locked=!s.free&&!isPro;
+                    return(
+                      <button key={s.id} onClick={()=>locked?navigate("upgrade"):applySkin(s.id)}
+                        style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:12,
+                          border:`2px solid ${active?C.teal:"transparent"}`,
+                          background:active?`${C.teal}14`:"#f7f8fa",
+                          cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left",width:"100%",
+                          opacity:locked?0.6:1}}>
+                        {/* Mini color bar preview */}
+                        <div style={{display:"flex",gap:2,flexShrink:0}}>
+                          {s.bar.map((c,i)=>(
+                            <div key={i} style={{width:10,height:28,borderRadius:3,background:c}}/>
+                          ))}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:800,fontSize:14,color:C.dark}}>{s.emoji} {s.name}</div>
+                          <div style={{fontSize:11,color:C.muted,marginTop:1}}>
+                            {s.free?"Free":locked?"Game Night+":"Applied"}
+                          </div>
+                        </div>
+                        {active&&<div style={{fontSize:16,color:C.teal}}>✓</div>}
+                        {locked&&<div style={{fontSize:13,color:C.muted}}>🔒</div>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1859,7 +2022,7 @@ function App(){
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:"#fff",lineHeight:1.1}}>Save every game night forever</div>
           <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:4,lineHeight:1.5}}>Upgrade once. Keep your history, stats and squads on any device.</div>
         </div>
-        <ColorBar/>
+        <ColorBar colors={skin.bar}/>
         <div style={{padding:"16px 14px",paddingBottom:"calc(24px + env(safe-area-inset-bottom))"}}>
           <div style={{background:"#fff",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:16}}>
             {features.map((f,i)=>(
@@ -1929,7 +2092,7 @@ function App(){
             </div>
           </div>
         </div>
-        <ColorBar/>
+        <ColorBar colors={skin.bar}/>
         {/* Tab Nav — sticky */}
         <div style={{background:"#fff",borderBottom:"1px solid #eee",display:"flex",flexShrink:0,position:"sticky",top:0,zIndex:10}}>
           {tabs.map(([key,label])=>{
