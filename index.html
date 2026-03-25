@@ -413,7 +413,14 @@ function App(){
   const [pendingClaimGame,setPendingClaimGame] = useState(null);
   const fileRef = useRef();
   const photoRef = useRef();
+  const recapRef = useRef();
   const rulesScrollRef = useRef();
+  const [sharingRecap,setSharingRecap] = useState(false);
+  const [sharingPhoto,setSharingPhoto] = useState(false);
+  const [photoCardImg,setPhotoCardImg] = useState(null); // base64 of chosen photo
+  const [selectedFrame,setSelectedFrame] = useState('strip'); // 'strip' | 'split'
+  const photoCardRef = useRef();
+  const photoInputRef = useRef();
   const screenRef = useRef(screen);
   useEffect(()=>{ screenRef.current=screen; },[screen]);
 
@@ -579,6 +586,137 @@ function App(){
         fb.update(fb.ref(fb.db),{[`profiles/${uid}/gameHistory`]:arr.slice(-20)});
       });
     });
+  }
+
+  // ── Recap stat generation ──────────────────────────────────────────────────
+  function generateRecapLines(rankList){
+    const lines=[];
+    const winner=rankList[0];
+    const loser=rankList[rankList.length-1];
+    const winnerTotal=totals[winner];
+    const loserTotal=totals[loser];
+    lines.push("🏆 "+winner+" won with "+winnerTotal+" pts");
+    const mostWins=rankList.reduce((a,b)=>getWins(b)>getWins(a)?b:a,rankList[0]);
+    if(getWins(mostWins)>1) lines.push("🎯 "+mostWins+" went out "+getWins(mostWins)+" times");
+    if(rankList.length>2) lines.push("💀 "+loser+" finished last with "+loserTotal+" pts");
+    for(let i=1;i<rankList.length-1;i++){
+      const diff=Math.abs(totals[rankList[i]]-totals[rankList[i+1]]);
+      if(diff<=10&&diff>0){lines.push("⚡ "+rankList[i]+" & "+rankList[i+1]+" were only "+diff+" pts apart");break;}
+    }
+    let worstRound=0,worstPlayer="",worstRoundNum="";
+    for(const name of rankList){
+      const s=scores[name]??{};
+      for(const [ridx,val] of Object.entries(s)){
+        if((val||0)>worstRound){worstRound=val;worstPlayer=name;worstRoundNum=String(startPip-Number(ridx));}
+      }
+    }
+    if(worstRound>80) lines.push("😬 "+worstPlayer+" had a rough round "+worstRoundNum+" — "+worstRound+" pts");
+    return lines.slice(0,5);
+  }
+
+  async function shareRecap(){
+    if(sharingRecap||!recapRef.current) return;
+    setSharingRecap(true);
+    try{
+      // 1. Load html2canvas
+      await new Promise((res,rej)=>{
+        if(window.html2canvas){res();return;}
+        const s=document.createElement("script");
+        s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
+      // 2. Ensure fonts are fully loaded before capture
+      if(document.fonts&&document.fonts.ready){
+        await document.fonts.ready;
+      }
+      // Force Fredoka One and Nunito to be used/loaded by measuring a test element
+      await new Promise(res=>{
+        const t=document.createElement("span");
+        t.style.cssText="position:fixed;left:-9999px;top:0;font-family:'Fredoka One',cursive;font-size:48px;visibility:hidden;";
+        t.textContent="Mexican Train 0123456789";
+        document.body.appendChild(t);
+        const t2=document.createElement("span");
+        t2.style.cssText="position:fixed;left:-9999px;top:0;font-family:'Nunito',sans-serif;font-weight:800;font-size:16px;visibility:hidden;";
+        t2.textContent="Game Night Recap";
+        document.body.appendChild(t2);
+        // Give browser a frame to render them
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          document.body.removeChild(t);
+          document.body.removeChild(t2);
+          res();
+        }));
+      });
+      // 3. Capture
+      const canvas=await window.html2canvas(recapRef.current,{
+        scale:2,
+        useCORS:true,
+        backgroundColor:null,
+        logging:false,
+        allowTaint:false,
+        foreignObjectRendering:false,
+      });
+      canvas.toBlob(async(blob)=>{
+        if(!blob){setSharingRecap(false);return;}
+        const file=new File([blob],"game-night-recap.png",{type:"image/png"});
+        if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+          await navigator.share({files:[file],title:"Mexican Train Game Night",text:"Check out our game night results! 🚂"});
+        } else {
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");
+          a.href=url; a.download="game-night-recap.png"; a.click();
+          URL.revokeObjectURL(url);
+        }
+        setSharingRecap(false);
+      },"image/png");
+    }catch(e){console.error("Recap share failed:",e);setSharingRecap(false);}
+  }
+
+  function handlePhotoCardInput(e){
+    const file=e.target.files?.[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=()=>setPhotoCardImg(reader.result);
+    reader.readAsDataURL(file);
+    e.target.value="";
+  }
+
+  async function sharePhotoCard(){
+    if(sharingPhoto||!photoCardRef.current) return;
+    setSharingPhoto(true);
+    try{
+      await new Promise((res,rej)=>{
+        if(window.html2canvas){res();return;}
+        const s=document.createElement("script");
+        s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
+      if(document.fonts&&document.fonts.ready) await document.fonts.ready;
+      await new Promise(res=>{
+        const t=document.createElement("span");
+        t.style.cssText="position:fixed;left:-9999px;top:0;font-family:'Fredoka One',cursive;font-size:48px;visibility:hidden;";
+        t.textContent="Game Night";
+        document.body.appendChild(t);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{document.body.removeChild(t);res();}));
+      });
+      const canvas=await window.html2canvas(photoCardRef.current,{
+        scale:2,useCORS:true,allowTaint:true,backgroundColor:null,logging:false,foreignObjectRendering:false,
+      });
+      canvas.toBlob(async(blob)=>{
+        if(!blob){setSharingPhoto(false);return;}
+        const file=new File([blob],"game-night-photo.png",{type:"image/png"});
+        if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+          await navigator.share({files:[file],title:"Mexican Train Game Night",text:"Game night done! 🚂🎉"});
+        } else {
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");
+          a.href=url; a.download="game-night-photo.png"; a.click();
+          URL.revokeObjectURL(url);
+        }
+        setSharingPhoto(false);
+      },"image/png");
+    }catch(e){console.error("Photo share failed:",e);setSharingPhoto(false);}
   }
 
   function goToProfile(name){
@@ -1249,6 +1387,40 @@ function App(){
           </div>
         ))}
         <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:360,marginTop:24}}>
+          {/* Share Recap button */}
+          <button onClick={shareRecap} disabled={sharingRecap} style={{...btnStyle("linear-gradient(135deg, #6c3fbf, #9b59d0)"),fontSize:16,padding:"16px",borderRadius:50,border:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:10,opacity:sharingRecap?0.7:1}}>
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            {sharingRecap?"Creating recap…":"Share Game Recap"}
+          </button>
+          {/* Group Photo button */}
+          <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoCardInput} style={{display:"none"}}/>
+          {photoCardImg
+            ?<div style={{width:"100%",display:"flex",flexDirection:"column",gap:8}}>
+                {/* Frame selector */}
+                <div style={{display:"flex",gap:8}}>
+                  {[["strip","📷 Strip"],["split","⚡ Split"]].map(([id,label])=>(
+                    <button key={id} onClick={()=>setSelectedFrame(id)}
+                      style={{flex:1,padding:"8px",borderRadius:12,border:`2px solid ${selectedFrame===id?"rgba(255,255,255,0.6)":"rgba(255,255,255,0.15)"}`,background:selectedFrame===id?"rgba(255,255,255,0.15)":"transparent",color:"#fff",fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setPhotoCardImg(null)} style={{flex:1,padding:"14px",borderRadius:50,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.08)",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>
+                    Retake
+                  </button>
+                  <button onClick={sharePhotoCard} disabled={sharingPhoto}
+                    style={{flex:2,...btnStyle(`linear-gradient(135deg, ${C.teal}, #006994)`),padding:"14px",borderRadius:50,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:sharingPhoto?0.7:1}}>
+                    <IconCamera size={18} color="#fff"/>
+                    {sharingPhoto?"Creating…":"Share Photo Card"}
+                  </button>
+                </div>
+              </div>
+            :<button onClick={()=>photoInputRef.current.click()}
+                style={{...btnStyle(`linear-gradient(135deg, ${C.teal}, #006994)`),fontSize:16,padding:"16px",borderRadius:50,border:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+                <IconCamera size={18} color="#fff"/> Take Group Photo
+              </button>
+          }
           {!isPro&&(
             <div style={{background:"rgba(255,255,255,0.06)",border:`1px solid ${C.gold}44`,borderRadius:20,padding:"20px 18px",textAlign:"center",marginBottom:4}}>
               <span style={{background:`linear-gradient(135deg, ${C.gold}, ${C.coral})`,color:C.dark,borderRadius:50,padding:"3px 12px",fontSize:11,fontWeight:900,fontFamily:"'Nunito',sans-serif",letterSpacing:0.5}}>Game Night+</span>
@@ -1275,6 +1447,152 @@ function App(){
             <IconTrain size={18} color="#fff"/> New Game
           </button>
         </div>
+
+        {/* Hidden photo card — rendered offscreen for html2canvas capture */}
+        {photoCardImg&&(
+          <div ref={photoCardRef} style={{position:"fixed",left:-9999,top:0,pointerEvents:"none",fontFamily:"'Nunito',sans-serif",WebkitFontSmoothing:"antialiased"}}>
+            {/* ── STRIP (B) ── */}
+            {selectedFrame==="strip"&&(
+              <div style={{width:280,background:"#1A1A2A",borderRadius:0}}>
+                {/* Top track */}
+                <svg width="280" height="20" style={{display:"block"}}>
+                  <rect width="280" height="20" fill="#1A1A2A"/>
+                  <line x1="0" y1="7" x2="280" y2="7" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
+                  <line x1="0" y1="14" x2="280" y2="14" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
+                  {Array.from({length:18},(_,i)=><line key={i} x1={8+i*16} y1="3" x2={8+i*16} y2="18" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5"/>)}
+                  {/* Mini dominoes */}
+                  {[[30,"#FF0013","#1B3166"],[100,"#292875","#3B5F24"],[170,"#FF7E03","#FDE903"],[220,"#2F6E29","#FF0013"]].map(([x,c1,c2],i)=>(
+                    <g key={i}>
+                      <rect x={x} y="3" width="28" height="13" rx="2" fill="#fff"/>
+                      <line x1={x+14} y1="3" x2={x+14} y2="16" stroke="#ddd" strokeWidth="0.8"/>
+                      <circle cx={x+7} cy="9.5" r="2.5" fill={c1}/>
+                      <circle cx={x+21} cy="7" r="2.5" fill={c2}/>
+                      <circle cx={x+21} cy="12" r="2.5" fill={c2}/>
+                    </g>
+                  ))}
+                </svg>
+                {/* Photo */}
+                <img src={photoCardImg} style={{width:280,height:280,objectFit:"cover",display:"block"}}/>
+                {/* Bottom track */}
+                <svg width="280" height="20" style={{display:"block"}}>
+                  <rect width="280" height="20" fill="#1A1A2A"/>
+                  <line x1="0" y1="7" x2="280" y2="7" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
+                  <line x1="0" y1="14" x2="280" y2="14" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
+                  {Array.from({length:18},(_,i)=><line key={i} x1={8+i*16} y1="3" x2={8+i*16} y2="18" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5"/>)}
+                </svg>
+                {/* Stats */}
+                <div style={{padding:"14px 16px 16px"}}>
+                  <div style={{textAlign:"center",marginBottom:10}}>
+                    <div style={{fontFamily:"'Fredoka One',cursive",color:"#FFD670",fontSize:20,lineHeight:1}}>🏆 {ranked[0]} won!</div>
+                    <div style={{color:"rgba(255,255,255,0.4)",fontSize:11,marginTop:3}}>Mexican Train · Game Night</div>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-around",marginBottom:10}}>
+                    {ranked.map((name,i)=>(
+                      <div key={name} style={{textAlign:"center"}}>
+                        <div style={{fontFamily:"'Fredoka One',cursive",color:i===0?"#FFD670":"#fff",fontSize:16}}>{totals[name]}</div>
+                        <div style={{color:"rgba(255,255,255,0.4)",fontSize:9,textTransform:"uppercase",letterSpacing:0.5,marginTop:1}}>{name.slice(0,6)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{display:"flex",height:3,borderRadius:2,overflow:"hidden"}}>
+                    {skin.bar.map((c,i)=><div key={i} style={{flex:1,background:c}}/>)}
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* ── SPLIT (D) ── */}
+            {selectedFrame==="split"&&(
+              <div style={{width:400,height:220,background:"#1A1A2A",display:"flex"}}>
+                {/* Left: photo with track borders */}
+                <div style={{width:220,position:"relative",flexShrink:0}}>
+                  <img src={photoCardImg} style={{width:220,height:220,objectFit:"cover",display:"block"}}/>
+                  {/* Track overlays */}
+                  <svg width="220" height="18" style={{position:"absolute",top:0,left:0,display:"block"}}>
+                    <rect width="220" height="18" fill="rgba(26,26,42,0.85)"/>
+                    <line x1="0" y1="7" x2="220" y2="7" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+                    <line x1="0" y1="13" x2="220" y2="13" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+                    {Array.from({length:14},(_,i)=><line key={i} x1={8+i*16} y1="3" x2={8+i*16} y2="16" stroke="rgba(255,255,255,0.15)" strokeWidth="2"/>)}
+                  </svg>
+                  <svg width="220" height="18" style={{position:"absolute",bottom:0,left:0,display:"block"}}>
+                    <rect width="220" height="18" fill="rgba(26,26,42,0.85)"/>
+                    <line x1="0" y1="5" x2="220" y2="5" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+                    <line x1="0" y1="11" x2="220" y2="11" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+                    {Array.from({length:14},(_,i)=><line key={i} x1={8+i*16} y1="2" x2={8+i*16} y2="16" stroke="rgba(255,255,255,0.15)" strokeWidth="2"/>)}
+                  </svg>
+                </div>
+                {/* Right: stats */}
+                <div style={{flex:1,padding:"16px 14px",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+                  <div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.35)",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Game Night</div>
+                    <div style={{fontFamily:"'Fredoka One',cursive",color:"#FFD670",fontSize:18,lineHeight:1.1,marginBottom:10}}>🏆 {ranked[0]} won!</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      {ranked.map((name,i)=>(
+                        <div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <span style={{color:i===0?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.5)",fontSize:11,fontWeight:700}}>{name}</span>
+                          <span style={{fontFamily:"'Fredoka One',cursive",color:i===0?"#FFD670":"rgba(255,255,255,0.7)",fontSize:14}}>{totals[name]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    {/* Mini dominoes */}
+                    <div style={{display:"flex",gap:3,marginBottom:6}}>
+                      {[[C.coral,C.sky],[C.teal,C.pink],[C.gold,C.lime]].map(([c1,c2],i)=>(
+                        <svg key={i} width="24" height="12" viewBox="0 0 30 15">
+                          <rect width="30" height="15" rx="2" fill="rgba(255,255,255,0.1)"/>
+                          <line x1="15" y1="0" x2="15" y2="15" stroke="rgba(255,255,255,0.2)" strokeWidth="0.8"/>
+                          <circle cx="7" cy="7.5" r="3" fill={c1}/>
+                          <circle cx="22" cy="5" r="3" fill={c2}/>
+                          <circle cx="22" cy="10" r="3" fill={c2}/>
+                        </svg>
+                      ))}
+                    </div>
+                    <div style={{display:"flex",height:3,borderRadius:2,overflow:"hidden"}}>
+                      {skin.bar.map((c,i)=><div key={i} style={{flex:1,background:c}}/>)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Hidden recap card — rendered offscreen for html2canvas capture */}
+        <div ref={recapRef} style={{position:"fixed",left:-9999,top:0,width:360,background:"linear-gradient(160deg,#1A1A2A,#2a1a3a)",padding:"28px 24px 24px",fontFamily:"'Nunito',sans-serif",pointerEvents:"none",WebkitFontSmoothing:"antialiased",MozOsxFontSmoothing:"grayscale"}}>
+          {/* Header */}
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+            <div style={{fontSize:28}}>🚂</div>
+            <div>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1}}>Mexican Train</div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:2}}>Game Night Recap</div>
+            </div>
+          </div>
+          {/* Color bar */}
+          <div style={{display:"flex",height:5,borderRadius:3,overflow:"hidden",marginBottom:20}}>
+            {skin.bar.map((c,i)=><div key={i} style={{flex:1,background:c}}/>)}
+          </div>
+          {/* Rankings */}
+          {ranked.map((name,i)=>(
+            <div key={name} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",marginBottom:8,borderRadius:14,background:i===0?"rgba(255,215,0,0.15)":"rgba(255,255,255,0.06)",border:i===0?`1.5px solid rgba(255,215,0,0.3)`:"1.5px solid rgba(255,255,255,0.08)"}}>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:i===0?C.gold:"rgba(255,255,255,0.3)",width:28,flexShrink:0}}>{i===0?"🏆":i+1}</div>
+              <div style={{width:36,height:36,borderRadius:"50%",background:AVATAR_COLORS[players.indexOf(name)%AVATAR_COLORS.length],display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,color:"#1A1A2A",flexShrink:0}}>{name.slice(0,2).toUpperCase()}</div>
+              <div style={{flex:1}}>
+                <div style={{color:"#fff",fontWeight:800,fontSize:15}}>{name}</div>
+                <div style={{color:"rgba(255,255,255,0.4)",fontSize:11}}>{getWins(name)} rounds won</div>
+              </div>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:i===0?C.gold:"#fff"}}>{totals[name]}</div>
+            </div>
+          ))}
+          {/* Stat lines */}
+          <div style={{marginTop:16,padding:"14px 16px",background:"rgba(255,255,255,0.05)",borderRadius:14,border:"1px solid rgba(255,255,255,0.08)"}}>
+            {generateRecapLines(ranked).map((line,i)=>(
+              <div key={i} style={{color:"rgba(255,255,255,0.85)",fontSize:13,fontWeight:600,lineHeight:1.6,marginBottom:i<generateRecapLines(ranked).length-1?4:0}}>{line}</div>
+            ))}
+          </div>
+          {/* Footer */}
+          <div style={{marginTop:16,textAlign:"center",color:"rgba(255,255,255,0.25)",fontSize:11,letterSpacing:1}}>mexican-train-scoreboard.netlify.app</div>
+        </div>
+
       </Screen>
     );
   }
