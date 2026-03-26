@@ -581,6 +581,8 @@ function App(){
             setUserProfile(profile);
             setMyName(profile.name);
             if(profile.isPro) setIsPro(true);
+            // Pre-fill Player 1 in setup with the logged-in user's name
+            setSetupPlayers(prev=>prev[0]?.name?prev:[{name:profile.name},...prev.slice(1)]);
           } else {
             navigate('welcome');
           }
@@ -605,25 +607,14 @@ function App(){
       } else {
         fb().signInAnonymously(fb().auth).catch(function(err){
           console.error('Auth failed:',err);
-          // Still mark ready so user isn't stuck on loading screen
           setAuthReady(true);
         });
         // Safari ITP can silently block auth from ever resolving.
-        // Hard timeout so the app never stays permanently on the loading screen.
         setTimeout(function(){ setAuthReady(true); }, 5000);
       }
     });
     return()=>unsub();
   },[]);
-
-  // Auto-populate Player 1 with the logged-in user's name once profile loads
-  useEffect(()=>{
-    if(!userProfile?.name) return;
-    setSetupPlayers(prev=>{
-      if(prev[0]?.name) return prev; // don't overwrite if user already typed
-      return [{name:userProfile.name}, ...prev.slice(1)];
-    });
-  },[userProfile?.name]);
 
   // Derived
   const startPip     = gameData?.startPip??12;
@@ -2785,10 +2776,7 @@ function App(){
 
   // ── Loading ────────────────────────────────────────────────────────────────
   const [loadingTooLong, setLoadingTooLong] = React.useState(false);
-  React.useEffect(()=>{
-    const t = setTimeout(()=>setLoadingTooLong(true), 4000);
-    return ()=>clearTimeout(t);
-  },[]);
+  React.useEffect(()=>{ const t=setTimeout(()=>setLoadingTooLong(true),4000); return ()=>clearTimeout(t); },[]);
   return(
     <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
       <div style={{width:48,height:48,borderRadius:12,background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,display:"flex",alignItems:"center",justifyContent:"center"}}>
