@@ -258,8 +258,7 @@ function HamburgerBtn({onOpen,style={}}){
 // ── Slide-in menu ───────────────────────────────────────────────────────────
 function SlideMenu({open,onClose,currentUser,userProfile,allPlayers,isPro,skin,navigate,setUpgradeFrom,setProfileFrom,setSquadsFrom,setRulesFrom,setRulesTab,setViewingPlayer,screen}){
   const C2={sky:"#70D6FF",pink:"#FF70A6",coral:"#FF9770",gold:"#FFD670",teal:"#2EC4B6",dark:"#1A1A2A",muted:"#888"};
-  const localMatch = allPlayers?.find(p => p.name === userProfile?.name) || allPlayers?.[0];
-  const pl = userProfile ? { ...localMatch, ...userProfile } : localMatch;
+  const pl=userProfile;
   if(!open) return null;
   function go(dest){onClose();setTimeout(()=>navigate(dest),220);}
   const menuItems=[
@@ -612,6 +611,16 @@ function App(){
     });
     return()=>unsub();
   },[]);
+
+  // Auto-populate Player 1 with the logged-in user's name once profile loads
+  useEffect(()=>{
+    if(!userProfile?.name) return;
+    setSetupPlayers(prev=>{
+      // Only pre-fill if Player 1 is still blank (don't overwrite if user already typed)
+      if(prev[0]?.name) return prev;
+      return [{name:userProfile.name}, ...prev.slice(1)];
+    });
+  },[userProfile?.name]);
 
   // Derived
   const startPip     = gameData?.startPip??12;
