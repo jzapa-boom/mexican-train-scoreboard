@@ -339,7 +339,11 @@ function SlideMenu({open,onClose,currentUser,userProfile,allPlayers,isPro,skin,n
       </div>
     </div>
   );
-}function IconProfile({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",flexShrink:0}}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;}function IconHelp({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",flexShrink:0}}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;}
+}
+
+function IconProfile({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",flexShrink:0}}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;}
+
+function IconHelp({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",flexShrink:0}}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;}
 // ── Components ─────────────────────────────────────────────────────────────
 // Domino renders a single half-tile (square) using the exact SVG spec
 function Domino({value,size=80,selected=false,count=0,onClick}){
@@ -1785,9 +1789,6 @@ function App(){
             <div style={{fontFamily:"'Fredoka One',cursive",color:C.coral,fontSize:28}}>{currentRound}</div>
           </div>
           <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:"50%",transform:"translateY(-50%)",right:14}}/>
-        </div>
-            <div style={{fontFamily:"'Fredoka One',cursive",color:C.coral,fontSize:28}}>{currentRound}</div>
-          </div>
         </div>
         <div style={{display:"flex",gap:10,padding:"4px 12px 12px",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
           {rank.map((name,i)=>{
