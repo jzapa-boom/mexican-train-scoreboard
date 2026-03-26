@@ -1302,13 +1302,7 @@ function App(){
               </button>
             </div>
           </div>
-        
-        <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
-      
-        <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
-      
-        <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
-      </div>
+        </div>
         <ColorBar colors={skin.bar}/>
         <div style={{padding:"10px 12px 4px",flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
           {rank.map((name,i)=>{
@@ -1506,6 +1500,7 @@ function App(){
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
        
         <div style={{fontSize:64,marginBottom:8}}>🎉</div>
+        <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"fixed",top:"calc(env(safe-area-inset-top) + 14px)",right:16,zIndex:10}}/>
         <div style={{fontFamily:"'Fredoka One',cursive",fontSize:38,color:C.gold,lineHeight:1,marginBottom:4}}>Game Over!</div>
         <div style={{color:"rgba(255,255,255,0.6)",fontSize:16,marginBottom:32}}>Final Results</div>
         {rank.map((name,i)=>(
@@ -1739,7 +1734,7 @@ function App(){
       <Screen style={{background:C.dark}}>
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
        
-        <div style={{padding:"calc(env(safe-area-inset-top) + 18px) 16px 16px",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{padding:"calc(env(safe-area-inset-top) + 18px) 16px 16px",display:"flex",alignItems:"center",gap:12,position:"relative",paddingRight:54}}>
           <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.09)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{flex:1}}>
             <div style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:26}}>Full Scoreboard</div>
@@ -1749,6 +1744,7 @@ function App(){
             <div style={{color:"rgba(255,255,255,0.4)",fontSize:10}}>ROUND</div>
             <div style={{fontFamily:"'Fredoka One',cursive",color:C.coral,fontSize:28}}>{currentRound}</div>
           </div>
+          <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:"50%",transform:"translateY(-50%)",right:14}}/>
         </div>
         <div style={{display:"flex",gap:10,padding:"4px 12px 12px",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
           {rank.map((name,i)=>{
