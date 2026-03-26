@@ -605,6 +605,7 @@ function App(){
       } else {
         fb().signInAnonymously(fb().auth).catch(function(err){
           console.error('Auth failed:',err);
+          // Still mark ready so user isn't stuck on loading screen
           setAuthReady(true);
         });
         // Safari ITP can silently block auth from ever resolving.
@@ -619,7 +620,7 @@ function App(){
   useEffect(()=>{
     if(!userProfile?.name) return;
     setSetupPlayers(prev=>{
-      if(prev[0]?.name) return prev;
+      if(prev[0]?.name) return prev; // don't overwrite if user already typed
       return [{name:userProfile.name}, ...prev.slice(1)];
     });
   },[userProfile?.name]);
