@@ -216,6 +216,11 @@ function IconUsers({size=20,color="currentColor"}){return<svg width={size} heigh
 function IconCopy({size=18,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",flexShrink:0}}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;}
 function IconRules({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 22 22" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" style={{display:"block",flexShrink:0}}><rect x="4" y="3" width="14" height="17" rx="2"/><line x1="7" y1="8" x2="15" y2="8"/><line x1="7" y1="11.5" x2="15" y2="11.5"/><line x1="7" y1="15" x2="12" y2="15"/></svg>;}
 function IconSquads({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" style={{display:"block",flexShrink:0}}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;}
+function IconMenu({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",flexShrink:0}}><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>;}
+function IconProfile({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",flexShrink:0}}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;}
+function IconBook({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",flexShrink:0}}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;}
+function IconHelp({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",flexShrink:0}}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;}
+function IconSettings({size=20,color="currentColor"}){return<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",flexShrink:0}}><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2.5" fill="white" stroke={color} strokeWidth="2"/><circle cx="16" cy="12" r="2.5" fill="white" stroke={color} strokeWidth="2"/><circle cx="10" cy="18" r="2.5" fill="white" stroke={color} strokeWidth="2"/></svg>;}
 
 // ── Components ─────────────────────────────────────────────────────────────
 // Domino renders a single half-tile (square) using the exact SVG spec
@@ -330,6 +335,111 @@ function useLS(key,initial){
   return [val,save];
 }
 
+// ── Hamburger button ────────────────────────────────────────────────────────
+function HamburgerBtn({onOpen,style={}}){
+  return(
+    <button onClick={onOpen} style={{width:34,height:34,borderRadius:"50%",background:"rgba(255,255,255,0.2)",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,flexShrink:0,touchAction:"manipulation",WebkitTapHighlightColor:"transparent",...style}}>
+      <span style={{display:"block",width:13,height:2,background:"#fff",borderRadius:1}}/>
+      <span style={{display:"block",width:13,height:2,background:"#fff",borderRadius:1}}/>
+      <span style={{display:"block",width:13,height:2,background:"#fff",borderRadius:1}}/>
+    </button>
+  );
+}
+
+// ── Slide-in menu ───────────────────────────────────────────────────────────
+function SlideMenu({open,onClose,currentUser,userProfile,allPlayers,isPro,skin,navigate,setUpgradeFrom,setProfileFrom,setSquadsFrom,setRulesFrom,setRulesTab,setViewingPlayer,screen}){
+  const C2={sky:"#70D6FF",pink:"#FF70A6",coral:"#FF9770",gold:"#FFD670",teal:"#2EC4B6",dark:"#1A1A2A",muted:"#888"};
+  const pl=userProfile;
+  if(!open) return null;
+  function go(dest){
+    onClose();
+    setTimeout(()=>navigate(dest),220);
+  }
+  const menuItems=[
+    {icon:<IconProfile size={17} color="#6c3fbf"/>,bg:"#f0e8ff",label:"My Profile",sub:"Stats, badges & history",action:()=>{
+      const me=allPlayers?.find(p=>p.name===userProfile?.name)||allPlayers?.[0];
+      if(me){setViewingPlayer(me);}
+      setProfileFrom(screen);go("profile");
+    }},
+    {icon:<IconUsers size={17} color="#2a9fd6"/>,bg:"#e8f4ff",label:"My Squads",sub:"Manage your groups",action:()=>{setSquadsFrom(screen);go("squads");}},
+    null, // divider
+    {icon:<IconBook size={17} color="#2d6a4f"/>,bg:"#e8fff5",label:"Game Rules",sub:"How to play Mexican Train",action:()=>{setRulesFrom(screen);setRulesTab("deal");go("rules");}},
+    {icon:<IconHelp size={17} color="#c07800"/>,bg:"#fff8e8",label:"Help & Tips",sub:"Get the most out of the app",action:()=>go("help")},
+    null,
+    {icon:<IconSettings size={17} color="#9b59d0"/>,bg:"#fdf0ff",label:"Settings",sub:"Theme, display name",action:()=>go("settings")},
+  ];
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:1000}} onClick={onClose}>
+      {/* Overlay */}
+      <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)",animation:"fadeIn 0.22s ease"}}/>
+      {/* Panel */}
+      <div onClick={e=>e.stopPropagation()} style={{position:"absolute",top:0,right:0,bottom:0,width:272,background:"#fff",display:"flex",flexDirection:"column",animation:"slideInRight 0.22s cubic-bezier(0.22,1,0.36,1)",boxShadow:"-8px 0 32px rgba(0,0,0,0.2)"}}>
+        <style>{`
+          @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+          @keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
+        `}</style>
+        {/* Header */}
+        <div style={{background:"linear-gradient(135deg,#6c3fbf,#9b59d0)",padding:"calc(env(safe-area-inset-top) + 28px) 16px 14px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+          <div style={{position:"relative",flexShrink:0}}>
+            <div style={{width:44,height:44,borderRadius:"50%",background:pl?.avatarColor||C2.sky,border:"2.5px solid rgba(255,255,255,0.5)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:900,color:C2.dark,overflow:"hidden"}}>
+              {pl?.avatarPhoto?<img src={pl.avatarPhoto} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+               :pl?.avatarEmoji?<span style={{fontSize:20}}>{pl.avatarEmoji}</span>
+               :<span>{(pl?.name||"?").slice(0,2).toUpperCase()}</span>}
+            </div>
+            {isPro&&<div style={{position:"absolute",bottom:-2,right:-2,width:17,height:17,borderRadius:"50%",background:"linear-gradient(135deg,#c07800,#FFD670)",border:"2px solid #9b59d0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8}}>⭐</div>}
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Fredoka One',cursive",fontSize:17,color:"#fff",lineHeight:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl?.name||"Player"}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.65)",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl?.tagline||"Tap My Profile to set up"}</div>
+            <div style={{display:"flex",gap:10,marginTop:5}}>
+              {[["games",pl?.gamesPlayed||0],["wins",pl?.wins||0],["avg",pl?.gamesPlayed?(Math.round((pl?.totalScore||0)/(pl?.gamesPlayed||1))):0]].map(([lbl,val])=>(
+                <div key={lbl}><span style={{fontFamily:"'Fredoka One',cursive",fontSize:13,color:"#fff"}}>{val}</span><span style={{fontSize:9,color:"rgba(255,255,255,0.55)",textTransform:"uppercase",letterSpacing:0.3,marginLeft:2}}>{lbl}</span></div>
+              ))}
+            </div>
+          </div>
+          <button onClick={onClose} style={{width:28,height:28,borderRadius:"50%",background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,touchAction:"manipulation"}}>✕</button>
+        </div>
+        {/* Color bar */}
+        <div style={{display:"flex",height:5,flexShrink:0}}>
+          {skin.bar.map((c,i)=><div key={i} style={{flex:1,background:c}}/>)}
+        </div>
+        {/* Menu items */}
+        <div style={{flex:1,overflowY:"auto",padding:"6px 0"}}>
+          {menuItems.map((item,i)=>{
+            if(!item) return <div key={i} style={{height:1,background:"#f2f2f2",margin:"3px 16px"}}/>;
+            return(
+              <button key={i} onClick={item.action} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",border:"none",background:"transparent",width:"100%",fontFamily:"'Nunito',sans-serif",textAlign:"left",cursor:"pointer",touchAction:"manipulation",WebkitTapHighlightColor:"transparent"}}>
+                <div style={{width:32,height:32,borderRadius:9,background:item.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{item.icon}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:800,fontSize:13,color:C2.dark}}>{item.label}</div>
+                  <div style={{fontSize:10,color:"#999",marginTop:1}}>{item.sub}</div>
+                </div>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            );
+          })}
+        </div>
+        {/* Footer */}
+        <div style={{padding:"10px 16px 14px",borderTop:"1px solid #f0f0f0",flexShrink:0}}>
+          {isPro
+            ?<div style={{display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#fffbf0,#fff8e8)",border:"1px solid #FFD67055",borderRadius:10,padding:"8px 12px",marginBottom:6}}>
+               <span style={{fontSize:15,flexShrink:0}}>⭐</span>
+               <div>
+                 <div style={{fontSize:11,fontWeight:900,color:"#c07800",lineHeight:1}}>Game Night+ · Founding Player</div>
+                 <div style={{fontSize:10,color:"#c07800",opacity:0.7,marginTop:2}}>Thanks for being here from the start 🚂</div>
+               </div>
+             </div>
+            :<button onClick={()=>{setUpgradeFrom(screen);onClose();setTimeout(()=>navigate("upgrade"),220);}} style={{width:"100%",padding:"10px",borderRadius:50,background:"linear-gradient(135deg,#c07800,#e8a020)",border:"none",color:"#fff",fontSize:12,fontWeight:900,fontFamily:"'Nunito',sans-serif",cursor:"pointer",marginBottom:6,touchAction:"manipulation"}}>
+               ⭐ Upgrade to Game Night+
+             </button>
+          }
+          <div style={{textAlign:"center",fontSize:10,color:"#ccc"}}>Mexican Train Game Night · v1.0</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── App ────────────────────────────────────────────────────────────────────
 const fb = window.__fb;
 
@@ -338,6 +448,7 @@ function App(){
 
   // ── Active skin (localStorage, per device) ─────────────────────────────
   const [skinId,setSkinId] = useState(()=>localStorage.getItem('mxt-skin')||'default');
+  const [menuOpen,setMenuOpen] = useState(false);
   const skin = SKINS[skinId]||SKINS.default;
   // Derive C and GR from active skin — these shadow the module-level constants
   const C = {
@@ -816,8 +927,11 @@ function App(){
   // ── SPLASH ─────────────────────────────────────────────────────────────────
   if(screen==="splash") return(
     <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
       <button onClick={togglePro} style={{position:"fixed",top:16,right:16,zIndex:999,background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:8,padding:"6px 12px",color:"rgba(255,255,255,0.6)",fontSize:11,fontWeight:700,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>{isPro?"PRO ON":"DEV"}</button>
       {proToast&&<div style={{position:"fixed",top:52,right:16,zIndex:999,background:isPro?`${C.gold}`:"rgba(255,255,255,0.2)",borderRadius:8,padding:"6px 12px",color:isPro?C.dark:"#fff",fontSize:11,fontWeight:700,fontFamily:"'Nunito',sans-serif"}}>{isPro?"Pro ON":"Pro OFF"}</div>}
+      <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"fixed",top:"calc(env(safe-area-inset-top) + 14px)",right:16,zIndex:10}}/>
       <div style={{position:"relative",width:140,height:140,marginBottom:24}}>
         <svg viewBox="0 0 1200 1200" style={{width:"100%",height:"100%"}}>
           <defs>
@@ -876,15 +990,17 @@ function App(){
   // ── JOIN ───────────────────────────────────────────────────────────────────
   if(screen==="join") return(
     <Screen style={{background:C.bg}}>
-      <div style={{background:GR.onboarding,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px"}}>
-        <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <IconUsers size={24} color="#fff"/>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
+      <div style={{background:GR.onboarding,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px",position:"relative"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,paddingRight:48}}>
+          <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:34,height:34,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
           <div>
-            <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>Join a Game</div>
+            <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1}}>Join a Game</div>
             <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:2}}>Enter the 4-letter code from your host</div>
           </div>
         </div>
+        <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:"50%",transform:"translateY(-50%)",right:14}}/>
       </div>
       <ColorBar colors={skin.bar}/>
       <div style={{margin:"10px 12px 0",background:"#fff",borderRadius:18,padding:"24px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
@@ -909,14 +1025,18 @@ function App(){
     const playerNames=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
     return(
       <Screen style={{background:C.bg}}>
-        {/* Compact header */}
-        <div style={{background:GR.onboarding,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-            <button onClick={()=>{setRulesFrom('setup');setRulesTab('deal');navigate("rules");}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",borderRadius:50,padding:"7px 16px",fontSize:13,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}><IconRules size={15} color="#fff"/> Rules</button>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
+        {/* Compact header — matches Join layout */}
+        <div style={{background:GR.onboarding,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px",position:"relative"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,paddingRight:48}}>
+            <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:34,height:34,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
+            <div>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1}}>Game Setup</div>
+              <div style={{color:"rgba(255,255,255,0.85)",fontSize:12,marginTop:2}}>Configure your game</div>
+            </div>
           </div>
-          <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>Game Setup</div>
-          <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:3}}>Configure your game</div>
+          <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:"50%",transform:"translateY(-50%)",right:14}}/>
         </div>
         <ColorBar colors={skin.bar}/>
 
@@ -1058,6 +1178,8 @@ function App(){
 
     return(
       <Screen style={{background:C.bg}}>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
         <div style={{background:GR.onboarding,padding:"calc(env(safe-area-inset-top) + 20px) 20px 24px",position:"relative"}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)",pointerEvents:"none"}}/>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:30,color:"#fff"}}>Who are you?</div>
@@ -1158,10 +1280,12 @@ function App(){
     const rank=ranked;
     return(
       <div style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden",fontFamily:"'Nunito',sans-serif"}}>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
         {/* Compact header — 3-column grid for true centering */}
-        <div style={{background:GR.ingame,padding:"calc(env(safe-area-inset-top) + 14px) 18px 12px",flexShrink:0}}>
-          <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",minHeight:72}}>
-            {/* Left: round label — absolutely left */}
+        <div style={{background:GR.ingame,padding:"calc(env(safe-area-inset-top) + 12px) 16px 10px",flexShrink:0,position:"relative"}}>
+          <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",minHeight:80}}>
+            {/* Left: round label */}
             <div style={{position:"absolute",left:0,display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",minWidth:64}}>
               <div style={{fontSize:9,fontWeight:800,color:"rgba(255,255,255,0.65)",letterSpacing:2,textTransform:"uppercase",lineHeight:1.3}}>ROUND</div>
               <div style={{fontFamily:"'Fredoka One',cursive",fontSize:54,color:"#fff",lineHeight:1}}>{currentRound}</div>
@@ -1169,19 +1293,22 @@ function App(){
             </div>
             {/* Center: domino — truly centered */}
             <DoubleDomino value={Math.min(currentRound,12)} height={44}/>
-            {/* Right: invite share button */}
-            <div style={{position:"absolute",right:0}}>
-              <button onClick={shareInvite} style={{background:"rgba(255,255,255,0.18)",border:"none",borderRadius:50,padding:"6px 14px",cursor:"pointer",textAlign:"center",touchAction:"manipulation",WebkitTapHighlightColor:"transparent"}}>
-                <div style={{fontSize:8,fontWeight:700,color:"rgba(255,255,255,0.65)",letterSpacing:1,display:"flex",alignItems:"center",gap:3,justifyContent:"center"}}>
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                  {copied?"COPIED!":"INVITE"}
-                </div>
-                <div style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:18,letterSpacing:3,lineHeight:1.1}}>{gameCode}</div>
+            {/* Right: hamburger + invite code stacked with gap */}
+            <div style={{position:"absolute",right:0,display:"flex",flexDirection:"column",alignItems:"center",gap:7}}>
+              <HamburgerBtn onOpen={()=>setMenuOpen(true)}/>
+              <button onClick={shareInvite} style={{display:"flex",alignItems:"center",gap:3,background:"rgba(255,255,255,0.16)",border:"none",borderRadius:50,padding:"3px 9px",cursor:"pointer",touchAction:"manipulation",WebkitTapHighlightColor:"transparent"}}>
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                <span style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:13,letterSpacing:1.5}}>{copied?"✓":gameCode}</span>
               </button>
             </div>
           </div>
-          {copied&&<div style={{textAlign:"center",color:"rgba(255,255,255,0.7)",fontSize:11,marginTop:4}}>Copied!</div>}
-        </div>
+        
+        <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
+      
+        <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
+      
+        <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
+      </div>
         <ColorBar colors={skin.bar}/>
         <div style={{padding:"10px 12px 4px",flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
           {rank.map((name,i)=>{
@@ -1273,7 +1400,9 @@ function App(){
     const scoringForOther=targetPlayer!==myName;
     return(
       <Screen style={{background:C.bg}}>
-        <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}cc, #FF70A6)`,padding:"calc(env(safe-area-inset-top) + 18px) 18px 18px",display:"flex",alignItems:"center",gap:13}}>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
+        <div style={{background:`linear-gradient(135deg, ${AVATAR_BG[pIdx%AVATAR_BG.length]}cc, #FF70A6)`,padding:"calc(env(safe-area-inset-top) + 18px) 18px 18px",display:"flex",alignItems:"center",gap:13,position:"relative",paddingRight:54}}>
           <button onClick={()=>{setEditingRound(null);setScoringFor("");goBack();}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div onClick={()=>goToProfile(targetPlayer)} style={{flexShrink:0,cursor:"pointer"}}><Avatar name={targetPlayer} {...avatarProps(targetPlayer,pIdx)} size={48}/></div>
           <div style={{flex:1,minWidth:0}}>
@@ -1288,6 +1417,8 @@ function App(){
             {editingRound!==null&&existingScore!==null&&<div style={{color:"rgba(255,255,255,0.55)",fontSize:10,fontWeight:700,textDecoration:"line-through"}}>{existingScore}</div>}
             <div style={{color:"rgba(255,255,255,0.65)",fontSize:10,fontWeight:700}}>PIPS</div>
             <div style={{fontFamily:"'Fredoka One',cursive",color:"#fff",fontSize:"clamp(38px,11vw,52px)",lineHeight:1}}>{score}</div>
+          </div>
+          <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
           </div>
         </div>
         <ColorBar colors={skin.bar}/>
@@ -1372,6 +1503,8 @@ function App(){
     const rank=ranked;
     return(
       <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
         <div style={{fontSize:64,marginBottom:8}}>🎉</div>
         <div style={{fontFamily:"'Fredoka One',cursive",fontSize:38,color:C.gold,lineHeight:1,marginBottom:4}}>Game Over!</div>
         <div style={{color:"rgba(255,255,255,0.6)",fontSize:16,marginBottom:32}}>Final Results</div>
@@ -1604,6 +1737,8 @@ function App(){
     const grandTotal=players.reduce((s,n)=>s+(totals[n]||0),0);
     return(
       <Screen style={{background:C.dark}}>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
         <div style={{padding:"calc(env(safe-area-inset-top) + 18px) 16px 16px",display:"flex",alignItems:"center",gap:12}}>
           <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.09)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
           <div style={{flex:1}}>
@@ -1724,6 +1859,8 @@ function App(){
     }
     return(
       <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
         <div style={{fontFamily:"'Fredoka One',cursive",fontSize:32,color:"#fff",marginBottom:6}}>Welcome!</div>
         <div style={{color:"rgba(255,255,255,0.5)",fontSize:15,marginBottom:32}}>Let's set up your player profile</div>
         <div style={{display:"flex",gap:10,marginBottom:28,justifyContent:"center",flexWrap:"wrap"}}>
@@ -1759,16 +1896,17 @@ function App(){
     const tabs=[['squads','Squads'],['players','Players']];
     return(
       <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
-        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
-          <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
-          <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:40,height:40,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <IconSquads size={26} color="#fff"/>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
+        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px",position:"relative",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,paddingRight:48}}>
+            <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:34,height:34,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
             <div>
-              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:"#fff",lineHeight:1}}>My Squads</div>
-              <div style={{color:"rgba(255,255,255,0.8)",fontSize:13,marginTop:2}}>Your regular game groups &amp; players</div>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1}}>My Squads</div>
+              <div style={{color:"rgba(255,255,255,0.8)",fontSize:12,marginTop:2}}>Your regular game groups &amp; players</div>
             </div>
           </div>
+          <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:"50%",transform:"translateY(-50%)",right:14}}/>
         </div>
         {/* Color Bar */}
         <ColorBar colors={skin.bar}/>
@@ -1896,9 +2034,13 @@ function App(){
     const notInSquad=allPlayers.filter(p=>!inSquad.includes(p.name));
     return(
       <Screen style={{background:C.bg}}>
-        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px"}}>
-          <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
-          <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#fff",lineHeight:1}}>{isNew?"New Squad":"Edit Squad"}</div>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} allPlayers={allPlayers} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} screen={screen}/>
+        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px",position:"relative"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,paddingRight:48}}>
+            <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:34,height:34,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
+            <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1}}>{isNew?"New Squad":"Edit Squad"}</div>
+          </div>
+          <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:"50%",transform:"translateY(-50%)",right:14}}/>
         </div>
         <ColorBar colors={skin.bar}/>
         <div style={{padding:"12px 14px",paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
@@ -1969,9 +2111,9 @@ function App(){
     return(
       <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
         {/* Header */}
-        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 14px) 18px 14px",flexShrink:0}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <button onClick={()=>{setIsEditingProfile(false);setEditingProfile(null);goBack();}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 14px) 18px 14px",flexShrink:0,position:"relative"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,paddingRight:48}}>
+            <button onClick={()=>{setIsEditingProfile(false);setEditingProfile(null);goBack();}} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:34,height:34,borderRadius:"50%",fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
             <Avatar name={pl.name} idx={pIdx} size={44} emoji={pl.avatarEmoji||null} photo={pl.avatarPhoto||null} color={pl.avatarColor||null}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
@@ -1981,6 +2123,7 @@ function App(){
               }
             </div>
           </div>
+          <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:"50%",transform:"translateY(-50%)",right:14}}/>
         </div>
         <ColorBar colors={skin.bar}/>
 
@@ -2276,44 +2419,17 @@ function App(){
                 </div>
               )}
 
-              {/* Skin selector */}
-              <div style={{background:C.cardBg||"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
-                <div style={{padding:"10px 16px",borderBottom:`1px solid ${C.cardBorder||"#f0f0f0"}`}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                    <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Theme</div>
-                    {!isPro&&<span style={{background:C.gold,color:C.dark,borderRadius:50,padding:"2px 8px",fontSize:10,fontWeight:800}}>Game Night+</span>}
-                  </div>
+              {/* Theme — now in Settings */}
+              <button onClick={()=>navigate("settings")} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.cardBg||"#fff",borderRadius:16,border:"none",cursor:"pointer",width:"100%",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12,fontFamily:"'Nunito',sans-serif",textAlign:"left",touchAction:"manipulation"}}>
+                <div style={{width:32,height:32,borderRadius:9,background:"#fdf0ff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <IconSettings size={17} color="#9b59d0"/>
                 </div>
-                <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
-                  {Object.values(SKINS).map(s=>{
-                    const active=skinId===s.id;
-                    const locked=!s.free&&!isPro;
-                    return(
-                      <button key={s.id} onClick={()=>locked?navigate("upgrade"):applySkin(s.id)}
-                        style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:12,
-                          border:`2px solid ${active?C.teal:"transparent"}`,
-                          background:active?`${C.teal}14`:"#f7f8fa",
-                          cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left",width:"100%",
-                          opacity:locked?0.6:1}}>
-                        {/* Mini color bar preview */}
-                        <div style={{display:"flex",gap:2,flexShrink:0}}>
-                          {s.bar.map((c,i)=>(
-                            <div key={i} style={{width:10,height:28,borderRadius:3,background:c}}/>
-                          ))}
-                        </div>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontWeight:800,fontSize:14,color:C.dark}}>{s.emoji} {s.name}</div>
-                          <div style={{fontSize:11,color:C.muted,marginTop:1}}>
-                            {s.free?"Free":locked?"Game Night+":"Applied"}
-                          </div>
-                        </div>
-                        {active&&<div style={{fontSize:16,color:C.teal}}>✓</div>}
-                        {locked&&<div style={{fontSize:13,color:C.muted}}>🔒</div>}
-                      </button>
-                    );
-                  })}
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:800,fontSize:14,color:C.dark}}>Theme & Settings</div>
+                  <div style={{fontSize:11,color:C.muted,marginTop:1}}>Change your app theme and display name</div>
                 </div>
-              </div>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
             </div>
           )}
 
@@ -2332,13 +2448,16 @@ function App(){
     const features=["Full game history & stats","Squads synced to your account","AI pip counting with camera","Recover your profile on any device"];
     return(
       <Screen style={{background:C.bg}}>
-        <div style={{background:GR.upgrade,padding:"calc(env(safe-area-inset-top) + 16px) 18px 20px"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-            <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:38,height:38,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
+        <div style={{background:GR.upgrade,padding:"calc(env(safe-area-inset-top) + 16px) 18px 20px",position:"relative"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,paddingRight:48,marginBottom:14}}>
+            <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:34,height:34,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
             <span style={{background:"rgba(255,255,255,0.25)",color:"#fff",borderRadius:50,padding:"4px 14px",fontSize:11,fontWeight:900,fontFamily:"'Nunito',sans-serif",letterSpacing:0.5}}>Game Night+</span>
           </div>
           <div style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:"#fff",lineHeight:1.1}}>Save every game night forever</div>
           <div style={{color:"rgba(255,255,255,0.85)",fontSize:13,marginTop:4,lineHeight:1.5}}>Upgrade once. Keep your history, stats and squads on any device.</div>
+          <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
         </div>
         <ColorBar colors={skin.bar}/>
         <div style={{padding:"16px 14px",paddingBottom:"calc(24px + env(safe-area-inset-bottom))"}}>
@@ -2398,6 +2517,8 @@ function App(){
     const tabs=[['deal','Deal Chart'],['quick','Quick Rules'],['house','House Rules']];
     return(
       <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+       
         {/* Header */}
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 20px) 20px 20px",position:"relative",overflow:"hidden",flexShrink:0}}>
           <div style={{position:"absolute",bottom:-40,right:-40,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,0.12)"}}/>
@@ -2507,6 +2628,119 @@ function App(){
     );
   }
 
+  // ── SETTINGS ───────────────────────────────────────────────────────────────
+  if(screen==="settings"){
+    return(
+      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+        <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 16px) 16px 14px",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,paddingRight:48}}>
+            <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:34,height:34,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
+            <div>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1}}>Settings</div>
+              <div style={{color:"rgba(255,255,255,0.75)",fontSize:12,marginTop:2}}>Theme, display name</div>
+            </div>
+          </div>
+          <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
+        </div>
+        <ColorBar colors={skin.bar}/>
+        <div style={{flex:1,overflowY:"auto",padding:"12px 12px 24px"}}>
+          {/* Display name quick-edit */}
+          <div style={{background:skin.cardBg||"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+            <div style={{padding:"10px 16px",borderBottom:`1px solid ${skin.cardBorder||"#f0f0f0"}`}}>
+              <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Display Name</div>
+            </div>
+            <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+              <input
+                defaultValue={userProfile?.name||""}
+                onBlur={async e=>{
+                  const newName=e.target.value.trim();
+                  if(!newName||!currentUser) return;
+                  const updated={...userProfile,name:newName};
+                  savePlayersLS(allPlayers.map(p=>p.id===updated.id?updated:p));
+                  setUserProfile(updated);
+                  await fb.update(fb.ref(fb.db,`profiles/${currentUser.uid}`),{name:newName});
+                }}
+                style={{flex:1,padding:"10px 14px",borderRadius:12,border:`2px solid #eee`,fontSize:15,fontFamily:"'Nunito',sans-serif",outline:"none",color:C.dark,background:"#fafafa"}}
+              />
+            </div>
+          </div>
+          {/* Skin selector */}
+          <div style={{background:skin.cardBg||"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",marginBottom:12}}>
+            <div style={{padding:"10px 16px",borderBottom:`1px solid ${skin.cardBorder||"#f0f0f0"}`}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{fontSize:11,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:0.5}}>Theme</div>
+                {!isPro&&<span style={{background:C.gold,color:C.dark,borderRadius:50,padding:"2px 8px",fontSize:10,fontWeight:800}}>Game Night+</span>}
+              </div>
+            </div>
+            <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:8}}>
+              {Object.values(SKINS).map(s=>{
+                const active=skinId===s.id;
+                const locked=!s.free&&!isPro;
+                return(
+                  <button key={s.id} onClick={()=>locked?navigate("upgrade"):applySkin(s.id)}
+                    style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:12,
+                      border:`2px solid ${active?C.teal:"transparent"}`,
+                      background:active?`${C.teal}14`:"#f7f8fa",
+                      cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left",width:"100%",opacity:locked?0.6:1,
+                      touchAction:"manipulation"}}>
+                    <div style={{display:"flex",gap:2,flexShrink:0}}>
+                      {s.bar.map((c,i)=><div key={i} style={{width:10,height:28,borderRadius:3,background:c}}/>)}
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:800,fontSize:14,color:C.dark}}>{s.emoji} {s.name}</div>
+                      <div style={{fontSize:11,color:C.muted,marginTop:1}}>{s.free?"Free":locked?"Game Night+":"Applied"}</div>
+                    </div>
+                    {active&&<div style={{fontSize:16,color:C.teal}}>✓</div>}
+                    {locked&&<div style={{fontSize:13,color:C.muted}}>🔒</div>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </Screen>
+    );
+  }
+
+  // ── HELP ────────────────────────────────────────────────────────────────────
+  if(screen==="help"){
+    const tips=[
+      {title:"Starting a game",text:"Tap 'New Game' on the splash screen, set up your players and domino set, then share the 4-letter code so others can join from their own phone."},
+      {title:"Scoring your tiles",text:"At the end of each round, tap SCORE to count your remaining tiles. Tap each tile value to add it — tap again to increase the count. Blank tiles count as 50 points."},
+      {title:"Camera AI scoring",text:"Switch to the Camera tab in the scoring screen and take a photo of your remaining tiles. The AI will count the pips automatically. Works best with good lighting."},
+      {title:"Host scoring",text:"The host can score on behalf of players who can't reach their phone. Players can toggle this permission when they join, or tap 'Host: on/off' on the scorecard."},
+      {title:"Invite more players",text:"During a game, tap the INVITE pill in the scorecard header to share a link. Anyone who opens it will land directly on the join screen with your code pre-filled."},
+      {title:"Themes",text:"Tap Settings in the menu to change your theme. Game Night+ members can unlock Día de los Muertos, Neon Night, and Tropical themes."},
+      {title:"Squads",text:"Save your regular group as a Squad so you don't have to retype names every game night. Tap My Squads in the menu to create one."},
+      {title:"Game recap",text:"After the game, tap 'Share Game Recap' to share a summary image with stats. Tap 'Take Group Photo' to snap a photo with a Mexican Train border for social media."},
+    ];
+    return(
+      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
+        <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} allPlayers={allPlayers} screen={screen}/>
+        <div style={{background:GR.upgrade,padding:"calc(env(safe-area-inset-top) + 16px) 16px 14px",flexShrink:0,position:"relative"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,paddingRight:48}}>
+            <button onClick={()=>goBack()} style={{background:"rgba(255,255,255,0.22)",border:"none",color:"#fff",width:34,height:34,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
+            <div>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:"#fff",lineHeight:1}}>Help & Tips</div>
+              <div style={{color:"rgba(255,255,255,0.8)",fontSize:12,marginTop:2}}>Get the most out of game night</div>
+            </div>
+          </div>
+          <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
+        </div>
+        <ColorBar colors={skin.bar}/>
+        <div style={{flex:1,overflowY:"auto",padding:"12px 12px 40px"}}>
+          {tips.map((t,i)=>(
+            <div key={i} style={{background:skin.cardBg||"#fff",borderRadius:16,padding:"14px 16px",marginBottom:10,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+              <div style={{fontFamily:"'Fredoka One',cursive",fontSize:16,color:C.teal,marginBottom:5}}>{t.title}</div>
+              <div style={{fontSize:13,color:"#555",lineHeight:1.6}}>{t.text}</div>
+            </div>
+          ))}
+        </div>
+      </Screen>
+    );
+  }
+
   // ── Loading ────────────────────────────────────────────────────────────────
   return(
     <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
@@ -2528,3 +2762,8 @@ waitForFb(()=>{
 </script>
 </body>
 </html>
+
+        <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:14,right:14}}/>
+      
+        <HamburgerBtn onOpen={()=>setMenuOpen(true)} style={{position:"absolute",top:"50%",transform:"translateY(-50%)",right:14}}/>
+      
