@@ -9,13 +9,19 @@
   <meta name="apple-mobile-web-app-title" content="MexTrain"/>
   <meta name="theme-color" content="#1A1A2E"/>
   <title>Mexican Train Game Night</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="preconnect" href="https://unpkg.com"/>
+  <link rel="preconnect" href="https://www.gstatic.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
   <style>
     *{-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
-    html,body{margin:0;padding:0;overscroll-behavior:none;-webkit-overflow-scrolling:touch;background:#1A1A2E;}
-    input,button{-webkit-appearance:none;}
+    html,body{margin:0;padding:0;overscroll-behavior:none;-webkit-overflow-scrolling:touch;background:#1A1A2E;height:100%;}
+    input,button{-webkit-appearance:none;font-size:16px;}
     *{-webkit-user-select:none;user-select:none;}
     input,textarea{-webkit-user-select:text;user-select:text;}
+    .dvh-full{height:100vh;height:100dvh;}
+    .dvh-min{min-height:100vh;min-height:100dvh;}
     :root{
       --sat:env(safe-area-inset-top,0px);
       --sab:env(safe-area-inset-bottom,0px);
@@ -30,10 +36,23 @@
     .color-bar-seg:nth-child(4){animation-delay:165ms}
     .color-bar-seg:nth-child(5){animation-delay:220ms}
     .color-bar-seg:nth-child(6){animation-delay:275ms}
+    @keyframes slideIn{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}
+    @keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
   </style>
 </head>
 <body>
 <div id="root"></div>
+
+<!-- Global error handler for debugging -->
+<script>
+window.onerror=function(msg,src,line,col,err){
+  console.error('App error:',msg,'at',src,line,col);
+  var r=document.getElementById('root');
+  if(r&&!r.hasChildNodes()){
+    r.innerHTML='<div style="padding:40px;text-align:center;font-family:sans-serif;color:#fff"><h2>Something went wrong</h2><p>Try refreshing the page</p><button onclick="location.reload()" style="padding:12px 24px;border-radius:12px;border:none;background:#FF9770;color:#fff;font-size:16px;cursor:pointer">Refresh</button></div>';
+  }
+};
+</script>
 
 <!-- React + Babel -->
 <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
@@ -75,6 +94,12 @@ const { useState, useRef, useEffect } = React;
 function waitForFb(cb) {
   if (window.__fbReady) { cb(); return; }
   document.addEventListener("fbReady", cb, { once: true });
+  // Polling fallback in case event was missed (e.g. slow Babel transpile)
+  var poll = setInterval(function(){
+    if(window.__fbReady){ clearInterval(poll); cb(); }
+  }, 100);
+  // Clear poll if event fires first
+  document.addEventListener("fbReady", function(){ clearInterval(poll); }, { once: true });
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -258,7 +283,6 @@ function SlideMenu({open,onClose,currentUser,userProfile,allPlayers,isPro,skin,n
     <div style={{position:"fixed",inset:0,zIndex:1000}} onClick={onClose}>
       <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)"}}/>
       <div onClick={e=>e.stopPropagation()} style={{position:"absolute",top:0,right:0,bottom:0,width:272,background:"#fff",display:"flex",flexDirection:"column",boxShadow:"-8px 0 32px rgba(0,0,0,0.2)",animation:"slideInRight 0.22s cubic-bezier(0.22,1,0.36,1)"}}>
-        <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
         <div style={{background:"linear-gradient(135deg,#6c3fbf,#9b59d0)",padding:"calc(env(safe-area-inset-top) + 28px) 16px 14px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
           <div style={{position:"relative",flexShrink:0}}>
             <div style={{width:44,height:44,borderRadius:"50%",background:pl?.avatarColor||C2.sky,border:"2.5px solid rgba(255,255,255,0.5)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:900,color:C2.dark,overflow:"hidden"}}>
@@ -405,15 +429,14 @@ function ColorBar({colors}){
       {bars.map((c,i)=>(
         <div key={i} style={{flex:1,background:c,animation:`slideIn 0.35s ease-out ${i*0.06}s both`}}/>
       ))}
-      <style>{`@keyframes slideIn{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}`}</style>
     </div>
   );
 }
 
 const btnStyle=(bg,extra={})=>({background:bg,color:"#fff",border:"none",borderRadius:16,padding:"15px 28px",fontSize:16,fontWeight:800,fontFamily:"'Nunito',sans-serif",cursor:"pointer",WebkitAppearance:"none",minHeight:48,...extra});
 
-function Screen({children,style={}}){
-  return<div style={{minHeight:"100dvh",paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)",paddingLeft:"env(safe-area-inset-left)",paddingRight:"env(safe-area-inset-right)",fontFamily:"'Nunito',sans-serif",overflowX:"hidden",...style}}>{children}</div>;
+function Screen({children,style={},fixed=false}){
+  return<div className={fixed?"dvh-full":"dvh-min"} style={{paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)",paddingLeft:"env(safe-area-inset-left)",paddingRight:"env(safe-area-inset-right)",fontFamily:"'Nunito',sans-serif",overflowX:"hidden",...style}}>{children}</div>;
 }
 
 function BottomBar({children}){
@@ -430,7 +453,7 @@ function useLS(key,initial){
 }
 
 // ── App ────────────────────────────────────────────────────────────────────
-const fb = window.__fb;
+function fb(){ return window.__fb; }
 
 function App(){
   const [screen,setScreen]           = useState("splash");
@@ -527,7 +550,7 @@ function App(){
   // Live sync
   useEffect(()=>{
     if(!gameCode) return;
-    const unsub = fb.onValue(fb.ref(fb.db,`games/${gameCode}`), snap=>{
+    const unsub = fb().onValue(fb().ref(fb().db,`games/${gameCode}`), snap=>{
       if(snap.exists()){
         const data=snap.val();
         setGameData(data);
@@ -543,35 +566,43 @@ function App(){
 
   // Firebase Auth
   useEffect(()=>{
-    const unsub=fb.onAuthStateChanged(fb.auth,async(user)=>{
+    const unsub=fb().onAuthStateChanged(fb().auth,async(user)=>{
       if(user){
         setCurrentUser(user);
-        const snap=await fb.get(fb.ref(fb.db,`profiles/${user.uid}`));
-        if(snap.exists()){
-          const profile=snap.val();
-          setUserProfile(profile);
-          setMyName(profile.name);
-          if(profile.isPro) setIsPro(true);
-        } else {
-          navigate('welcome');
-        }
+        try{
+          const snap=await fb().get(fb().ref(fb().db,`profiles/${user.uid}`));
+          if(snap.exists()){
+            const profile=snap.val();
+            setUserProfile(profile);
+            setMyName(profile.name);
+            if(profile.isPro) setIsPro(true);
+          } else {
+            navigate('welcome');
+          }
+        }catch(err){console.error('Profile fetch failed:',err);}
         setAuthReady(true);
         // Deep link: check for ?join=CODE in URL
-        const params=new URLSearchParams(window.location.search);
-        const deepCode=params.get('join');
-        if(deepCode&&deepCode.length===4){
-          const code=deepCode.toUpperCase();
-          const gameSnap=await fb.get(fb.ref(fb.db,`games/${code}`));
-          if(gameSnap.exists()&&gameSnap.val().status!=='done'){
-            setGameData(gameSnap.val());
-            setGameCode(code);
-            navigate('pickname');
-            // Clean URL without reloading
-            window.history.replaceState({},'',window.location.pathname);
+        try{
+          const params=new URLSearchParams(window.location.search);
+          const deepCode=params.get('join');
+          if(deepCode&&deepCode.length===4){
+            const code=deepCode.toUpperCase();
+            const gameSnap=await fb().get(fb().ref(fb().db,`games/${code}`));
+            if(gameSnap.exists()&&gameSnap.val().status!=='done'){
+              setGameData(gameSnap.val());
+              setGameCode(code);
+              navigate('pickname');
+              // Clean URL without reloading
+              window.history.replaceState({},'',window.location.pathname);
+            }
           }
-        }
+        }catch(err){console.error('Deep link failed:',err);}
       } else {
-        fb.signInAnonymously(fb.auth).catch(()=>{});
+        fb().signInAnonymously(fb().auth).catch(function(err){
+          console.error('Auth failed:',err);
+          // Still mark ready so user isn't stuck on loading screen
+          setAuthReady(true);
+        });
       }
     });
     return()=>unsub();
@@ -603,32 +634,42 @@ function App(){
     else if(houseRules.gameLength==='3') allRounds=allRounds.slice(0,3);
     const playerUids={};
     if(currentUser) playerUids[names[0]]=currentUser.uid;
-    await fb.set(fb.ref(fb.db,`games/${code}`),{
-      startPip:setupPip,
-      currentRound:allRounds[0],
-      roundsList:allRounds,
-      status:"active",players:names,
-      scores:initScores,
-      houseRules:houseRules,
-      playerUids:playerUids,
-      hostName:names[0],
-      createdAt:Date.now(),
-    });
-    setGameCode(code);
-    navigate("pickname");
+    try{
+      await fb().set(fb().ref(fb().db,`games/${code}`),{
+        startPip:setupPip,
+        currentRound:allRounds[0],
+        roundsList:allRounds,
+        status:"active",players:names,
+        scores:initScores,
+        houseRules:houseRules,
+        playerUids:playerUids,
+        hostName:names[0],
+        createdAt:Date.now(),
+      });
+      setGameCode(code);
+      navigate("pickname");
+    }catch(err){
+      console.error('Create game failed:',err);
+      alert('Could not create game — check your connection and try again.');
+    }
   }
 
   async function lookupGame(){
     const code=joinInput.toUpperCase().trim();
     if(code.length!==4){setJoinError("Enter the 4-letter game code");return;}
-    const snap=await fb.get(fb.ref(fb.db,`games/${code}`));
-    if(!snap.exists()){setJoinError("Game not found — check the code");return;}
-    const data=snap.val();
-    if(data.status==="done"){setJoinError("That game has already ended");return;}
-    setGameData(data);
-    setGameCode(code);
-    setJoinError("");
-    navigate("pickname");
+    try{
+      const snap=await fb().get(fb().ref(fb().db,`games/${code}`));
+      if(!snap.exists()){setJoinError("Game not found — check the code");return;}
+      const data=snap.val();
+      if(data.status==="done"){setJoinError("That game has already ended");return;}
+      setGameData(data);
+      setGameCode(code);
+      setJoinError("");
+      navigate("pickname");
+    }catch(err){
+      console.error('Lookup failed:',err);
+      setJoinError("Connection error — check your internet and try again");
+    }
   }
 
   async function submitScore(score){
@@ -647,45 +688,51 @@ function App(){
         else updates[`games/${gameCode}/status`]="done";
       }
     }
-    await fb.update(fb.ref(fb.db),updates);
-    setSelected({});setCameraScore(null);setEditingRound(null);setScoringFor("");
-    navigate("scorecard");
+    try{
+      await fb().update(fb().ref(fb().db),updates);
+      setSelected({});setCameraScore(null);setEditingRound(null);setScoringFor("");
+      navigate("scorecard");
+    }catch(err){
+      console.error('Submit score failed:',err);
+      alert('Could not submit score — check your connection and try again.');
+    }
   }
 
   async function writeGameResults(data){
-    const finalPlayers=data.players??[];
-    const finalScores=data.scores??{};
-    const finalUids=data.playerUids??{};
-    const finalTotals=Object.fromEntries(finalPlayers.map(n=>[n,Object.values(finalScores[n]??{}).reduce((a,b)=>a+(b||0),0)]));
-    const placement=finalPlayers.slice().sort((a,b)=>finalTotals[a]-finalTotals[b]);
-    const winner=placement[0];
-    const updates={};
-    finalPlayers.forEach(function(name){
-      const uid=finalUids[name];
-      if(!uid) return;
-      const myScore=finalTotals[name]??0;
-      const myPlacement=placement.indexOf(name)+1;
-      updates[`profiles/${uid}/gamesPlayed`]=fb.increment(1);
-      if(name===winner) updates[`profiles/${uid}/wins`]=fb.increment(1);
-      updates[`profiles/${uid}/totalScore`]=fb.increment(myScore);
-    });
-    if(Object.keys(updates).length>0) await fb.update(fb.ref(fb.db),updates);
-    // Append game history entries separately (can't use increment on arrays)
-    finalPlayers.forEach(function(name){
-      const uid=finalUids[name];
-      if(!uid) return;
-      const myScore=finalTotals[name]??0;
-      const myPlacement=placement.indexOf(name)+1;
-      // Detect if this game's players match a saved squad
-      const matchedSquad=squads.find(sq=>sq.members&&finalPlayers.length===sq.members.length&&finalPlayers.every(p=>sq.members.includes(p)));
-      const historyEntry={gameCode:data.gameCode||gameCode,date:Date.now(),players:finalPlayers,scores:finalScores,startPip:data.startPip??12,myScore,placement:myPlacement,squadName:matchedSquad?.name||null};
-      fb.get(fb.ref(fb.db,`profiles/${uid}/gameHistory`)).then(function(snap){
-        const existing=snap.exists()?snap.val():[];
-        const arr=Array.isArray(existing)?existing:Object.values(existing);
-        arr.push(historyEntry);
-        fb.update(fb.ref(fb.db),{[`profiles/${uid}/gameHistory`]:arr.slice(-20)});
+    try{
+      const finalPlayers=data.players??[];
+      const finalScores=data.scores??{};
+      const finalUids=data.playerUids??{};
+      const finalTotals=Object.fromEntries(finalPlayers.map(n=>[n,Object.values(finalScores[n]??{}).reduce((a,b)=>a+(b||0),0)]));
+      const placement=finalPlayers.slice().sort((a,b)=>finalTotals[a]-finalTotals[b]);
+      const winner=placement[0];
+      const updates={};
+      finalPlayers.forEach(function(name){
+        const uid=finalUids[name];
+        if(!uid) return;
+        const myScore=finalTotals[name]??0;
+        const myPlacement=placement.indexOf(name)+1;
+        updates[`profiles/${uid}/gamesPlayed`]=fb().increment(1);
+        if(name===winner) updates[`profiles/${uid}/wins`]=fb().increment(1);
+        updates[`profiles/${uid}/totalScore`]=fb().increment(myScore);
       });
-    });
+      if(Object.keys(updates).length>0) await fb().update(fb().ref(fb().db),updates);
+      // Append game history entries separately (can't use increment on arrays)
+      finalPlayers.forEach(function(name){
+        const uid=finalUids[name];
+        if(!uid) return;
+        const myScore=finalTotals[name]??0;
+        const myPlacement=placement.indexOf(name)+1;
+        const matchedSquad=squads.find(sq=>sq.members&&finalPlayers.length===sq.members.length&&finalPlayers.every(p=>sq.members.includes(p)));
+        const historyEntry={gameCode:data.gameCode||gameCode,date:Date.now(),players:finalPlayers,scores:finalScores,startPip:data.startPip??12,myScore,placement:myPlacement,squadName:matchedSquad?.name||null};
+        fb().get(fb().ref(fb().db,`profiles/${uid}/gameHistory`)).then(function(snap){
+          const existing=snap.exists()?snap.val():[];
+          const arr=Array.isArray(existing)?existing:Object.values(existing);
+          arr.push(historyEntry);
+          fb().update(fb().ref(fb().db),{[`profiles/${uid}/gameHistory`]:arr.slice(-20)});
+        }).catch(function(e){console.error('History write failed:',e);});
+      });
+    }catch(err){console.error('writeGameResults failed:',err);}
   }
 
   // ── Recap stat generation ──────────────────────────────────────────────────
@@ -879,7 +926,18 @@ function App(){
   }
 
   function copyCode(){
-    navigator.clipboard?.writeText(gameCode).catch(()=>{});
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(gameCode).catch(function(){});
+      } else {
+        // Fallback for older WebViews
+        var ta=document.createElement("textarea");
+        ta.value=gameCode;ta.style.position="fixed";ta.style.left="-9999px";
+        document.body.appendChild(ta);ta.select();
+        try{document.execCommand("copy");}catch(e){}
+        document.body.removeChild(ta);
+      }
+    }catch(e){}
     setCopied(true);
     setTimeout(()=>setCopied(false),2000);
   }
@@ -1125,12 +1183,12 @@ function App(){
   if(screen==="pickname"){
     const playerList=gameData?.players??[];
     const profileName=userProfile?.name??"";
-    const isPro=userProfile?.isPro===true;
+    const picknamePro=isPro||userProfile?.isPro===true;
 
     async function claimSlot(hostName){
       const updates={};
-      const finalName=isPro&&profileName&&profileName!==hostName?profileName:hostName;
-      if(isPro&&profileName&&profileName!==hostName){
+      const finalName=picknamePro&&profileName&&profileName!==hostName?profileName:hostName;
+      if(picknamePro&&profileName&&profileName!==hostName){
         const updatedPlayers=playerList.map(n=>n===hostName?profileName:n);
         const updatedScores={};
         Object.entries(gameData.scores??{}).forEach(([k,v])=>{
@@ -1142,14 +1200,14 @@ function App(){
       if(currentUser) updates[`games/${gameCode}/playerUids/${finalName}`]=currentUser.uid;
       // Write host scoring preference at join time
       updates[`games/${gameCode}/playerPrefs/${finalName}/allowHostScore`]=pendingAllowHost;
-      await fb.update(fb.ref(fb.db),updates);
+      await fb().update(fb().ref(fb().db),updates);
       setMyName(finalName);
       setSelectedName(null);
       navigate("scorecard");
     }
 
     async function addMyselfToGame(){
-      if(!isPro||!profileName) return;
+      if(!picknamePro||!profileName) return;
       const updatedPlayers=[...playerList,profileName];
       const updatedScores={...(gameData.scores??{}),[profileName]:{}};
       const updates={
@@ -1158,7 +1216,7 @@ function App(){
         [`games/${gameCode}/playerUids/${profileName}`]:currentUser.uid,
         [`games/${gameCode}/playerPrefs/${profileName}/allowHostScore`]:pendingAllowHost,
       };
-      await fb.update(fb.ref(fb.db),updates);
+      await fb().update(fb().ref(fb().db),updates);
       setMyName(profileName);
       navigate("scorecard");
     }
@@ -1190,7 +1248,7 @@ function App(){
                   <Avatar name={name} idx={i} size={44}/>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:800,fontSize:17,color:C.dark}}>{name}</div>
-                    {isPro&&profileName&&profileName!==name&&(
+                    {picknamePro&&profileName&&profileName!==name&&(
                       <div style={{fontSize:11,color:C.teal,fontWeight:700,marginTop:1}}>Will join as {profileName}</div>
                     )}
                     {isSelected&&<div style={{fontSize:11,color:C.teal,fontWeight:700,marginTop:1}}>That's me ✓</div>}
@@ -1222,7 +1280,7 @@ function App(){
               </div>
             );
           })}
-          {isPro&&profileName&&!playerList.includes(profileName)&&(
+          {picknamePro&&profileName&&!playerList.includes(profileName)&&(
             <div style={{marginBottom:10,borderRadius:16,border:`2px solid ${C.gold}55`,background:`${C.gold}0a`,overflow:"hidden"}}>
               <button onClick={()=>setSelectedName("__pro__")} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 14px",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"left"}}>
                 <Avatar name={profileName} idx={7} size={44}/>
@@ -1266,7 +1324,7 @@ function App(){
   if(screen==="scorecard"&&gameData){
     const rank=ranked;
     return(
-      <div style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden",fontFamily:"'Nunito',sans-serif"}}>
+      <div className="dvh-full" style={{background:C.bg,display:"flex",flexDirection:"column",overflow:"hidden",fontFamily:"'Nunito',sans-serif"}}>
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} allPlayers={allPlayers} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} screen={screen}/>
         {/* Compact header */}
         <div style={{background:GR.ingame,padding:"calc(env(safe-area-inset-top) + 12px) 16px 10px",flexShrink:0,position:"relative"}}>
@@ -1317,7 +1375,7 @@ function App(){
                       <button onClick={()=>{
                         const updates={};
                         updates[`games/${gameCode}/playerPrefs/${myName}/allowHostScore`]=!allowHost;
-                        fb.update(fb.ref(fb.db),updates);
+                        fb().update(fb().ref(fb().db),updates);
                       }} style={{display:"flex",alignItems:"center",gap:4,background:allowHost?`${C.teal}18`:"#f0f0f0",border:`1px solid ${allowHost?C.teal+"44":"#ddd"}`,borderRadius:50,padding:"3px 8px",cursor:"pointer",fontFamily:"'Nunito',sans-serif",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
                         <div style={{width:7,height:7,borderRadius:"50%",background:allowHost?C.teal:"#bbb",flexShrink:0}}/>
                         <span style={{fontSize:10,fontWeight:800,color:allowHost?C.teal:C.muted,whiteSpace:"nowrap"}}>{allowHost?"Host: on":"Host: off"}</span>
@@ -1817,12 +1875,12 @@ function App(){
         name,avatarIdx:welcomeAvatar,createdAt:Date.now(),
         email:null,isPro:false,gamesPlayed:0,wins:0,totalScore:0,gameHistory:[],
       };
-      await fb.set(fb.ref(fb.db,`profiles/${currentUser.uid}`),profile);
+      await fb().set(fb().ref(fb().db,`profiles/${currentUser.uid}`),profile);
       setUserProfile(profile);
       setMyName(name);
       // Retroactive claim — if they came from a completed game, write results now
       if(pendingClaimGame){
-        const snap=await fb.get(fb.ref(fb.db,`games/${pendingClaimGame}`));
+        const snap=await fb().get(fb().ref(fb().db,`games/${pendingClaimGame}`));
         if(snap.exists()){
           const gd=snap.val();
           // Find which player slot matches their chosen name (best-effort)
@@ -1830,7 +1888,7 @@ function App(){
           if(matchedName){
             const updates={};
             updates[`games/${pendingClaimGame}/playerUids/${matchedName}`]=currentUser.uid;
-            await fb.update(fb.ref(fb.db),updates);
+            await fb().update(fb().ref(fb().db),updates);
             await writeGameResults({...gd,playerUids:{...gd.playerUids,[matchedName]:currentUser.uid}});
           }
         }
@@ -1876,7 +1934,7 @@ function App(){
     // savePlayers -> savePlayersLS
     const tabs=[['squads','Squads'],['players','Players']];
     return(
-      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
+      <Screen fixed style={{background:C.bg,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} allPlayers={allPlayers} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} screen={screen}/>
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px",position:"relative",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:10,paddingRight:48}}>
@@ -1967,7 +2025,7 @@ function App(){
                 <div style={{display:"flex",gap:8,marginTop:4}}>
                   <input autoFocus value={newPlayerName} onChange={function(e){setNewPlayerName(e.target.value);}}
                     placeholder="Player name"
-                    style={{flex:1,padding:"12px 14px",borderRadius:12,border:`2px solid ${C.sky}`,fontSize:15,fontFamily:"'Nunito',sans-serif",outline:"none",WebkitUserSelect:"text",userSelect:"text"}}
+                    style={{flex:1,padding:"12px 14px",borderRadius:12,border:`2px solid ${C.sky}`,fontSize:16,fontFamily:"'Nunito',sans-serif",outline:"none",WebkitUserSelect:"text",userSelect:"text"}}
                     onKeyDown={function(e){
                       if(e.key==="Enter"&&newPlayerName.trim()){
                         var np={id:Date.now(),name:newPlayerName.trim(),avatarIdx:allPlayers.length%AVATAR_BG.length,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
@@ -2089,7 +2147,7 @@ function App(){
     const locked=TITLE_BADGES.filter(b=>!b.check(pl));
     const tabs=[['history','History'],['badges','Badges'],['customize','Customize']];
     return(
-      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
+      <Screen fixed style={{background:C.bg,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} allPlayers={allPlayers} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} screen={screen}/>
         {/* Header */}
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 14px) 18px 14px",flexShrink:0,position:"relative"}}>
@@ -2292,7 +2350,7 @@ function App(){
                     {isEditingProfile
                       ?<input value={editingProfile.tagline||""} onChange={e=>setEditingProfile(prev=>({...prev,tagline:e.target.value}))}
                           placeholder="e.g. Always loses on 12"
-                          style={{width:"100%",fontSize:13,border:"none",outline:"none",fontFamily:"'Nunito',sans-serif",color:C.muted,background:"transparent"}}/>
+                          style={{width:"100%",fontSize:16,border:"none",outline:"none",fontFamily:"'Nunito',sans-serif",color:C.muted,background:"transparent"}}/>
                       :<div style={{fontSize:13,color:pl.tagline?C.dark:C.muted}}>{pl.tagline||"None set"}</div>
                     }
                   </div>
@@ -2496,7 +2554,7 @@ function App(){
     ];
     const tabs=[['deal','Deal Chart'],['quick','Quick Rules'],['house','House Rules']];
     return(
-      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
+      <Screen fixed style={{background:C.bg,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} allPlayers={allPlayers} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} screen={screen}/>
         {/* Header */}
         <div style={{background:GR.rules,padding:"calc(env(safe-area-inset-top) + 16px) 18px 14px",position:"relative",flexShrink:0}}>
@@ -2609,7 +2667,7 @@ function App(){
   // ── SETTINGS ───────────────────────────────────────────────────────────────
   if(screen==="settings"){
     return(
-      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
+      <Screen fixed style={{background:C.bg,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} allPlayers={allPlayers} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} screen={screen}/>
         <div style={{background:GR.profile,padding:"calc(env(safe-area-inset-top) + 16px) 16px 14px",flexShrink:0,position:"relative"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,paddingRight:48}}>
@@ -2635,7 +2693,7 @@ function App(){
                   const updated={...userProfile,name:newName};
                   savePlayersLS(allPlayers.map(p=>p.id===updated.id?updated:p));
                   setUserProfile(updated);
-                  await fb.update(fb.ref(fb.db,`profiles/${currentUser.uid}`),{name:newName});
+                  await fb().update(fb().ref(fb().db,`profiles/${currentUser.uid}`),{name:newName});
                 }}
                 style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"2px solid #eee",fontSize:15,fontFamily:"'Nunito',sans-serif",outline:"none",color:C.dark,background:"#fafafa",boxSizing:"border-box"}}/>
             </div>
@@ -2686,7 +2744,7 @@ function App(){
       {title:"Game recap",text:"After the game, tap 'Share Game Recap' to share a stats image. Tap 'Take Group Photo' to snap a photo with a Mexican Train border for social media."},
     ];
     return(
-      <Screen style={{background:C.bg,display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden"}}>
+      <Screen fixed style={{background:C.bg,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} allPlayers={allPlayers} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} screen={screen}/>
         <div style={{background:GR.upgrade,padding:"calc(env(safe-area-inset-top) + 16px) 16px 14px",flexShrink:0,position:"relative"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,paddingRight:48}}>
