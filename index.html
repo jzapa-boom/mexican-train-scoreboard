@@ -630,10 +630,8 @@ function App(){
   const isHost       = gameData?.hostName===myName;
 
   async function createGame(){
-    const resolvedPlayers=setupPlayers.map((p,i)=>
-      i===0&&!p.name.trim()&&userProfile?.name?{...p,name:userProfile.name}:p
-    );
-    const names=resolvedPlayers.map(p=>p.name.trim()).filter(Boolean);
+    const p1=setupPlayers[0]?.name||userProfile?.name||myName||'';
+    const names=[p1,...setupPlayers.slice(1).map(p=>p.name.trim())].filter(Boolean);
     if(names.length<2) return;
     const code=genCode();
     const initScores={};
@@ -1079,10 +1077,8 @@ function App(){
 
   // ── SETUP ──────────────────────────────────────────────────────────────────
   if(screen==="setup"){
-    const effectivePlayers = setupPlayers.map((p,i)=>
-      i===0 && !p.name && userProfile?.name ? {...p,name:userProfile.name} : p
-    );
-    const playerNames=effectivePlayers.map(p=>p.name.trim()).filter(Boolean);
+    const p1name = setupPlayers[0]?.name || userProfile?.name || myName || '';
+    const playerNames=[p1name,...setupPlayers.slice(1).map(p=>p.name.trim())].filter(Boolean);
     return(
       <Screen style={{background:C.bg}}>
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} allPlayers={allPlayers} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} screen={screen}/>
@@ -1166,11 +1162,11 @@ function App(){
           {/* Players */}
           <div style={{padding:"14px 16px 16px"}}>
             <div style={{fontWeight:800,fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:0.5,marginBottom:12}}>Players</div>
-            {effectivePlayers.map((p,i)=>(
+            {setupPlayers.map((p,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                 <Avatar name={p.name||"?"} idx={i} size={40}/>
                 <input
-                  value={p.name}
+                  value={i===0 && !p.name ? (userProfile?.name||myName||'') : p.name}
                   onChange={e=>setSetupPlayers(prev=>prev.map((pl,j)=>j===i?{...pl,name:e.target.value}:pl))}
                   placeholder={`Player ${i+1}`}
                   style={{flex:1,padding:"13px 16px",borderRadius:12,border:"2px solid #eee",fontSize:16,fontFamily:"'Nunito',sans-serif",outline:"none",minHeight:48,background:"#fff"}}
