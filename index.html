@@ -630,9 +630,8 @@ function App(){
   const isHost       = gameData?.hostName===myName;
 
   async function createGame(){
-    // Apply userProfile name to Player 1 if still blank at create time
-    const resolvedPlayers = setupPlayers.map((p,i)=>
-      i===0 && !p.name.trim() && userProfile?.name ? {...p,name:userProfile.name} : p
+    const resolvedPlayers=setupPlayers.map((p,i)=>
+      i===0&&!p.name.trim()&&userProfile?.name?{...p,name:userProfile.name}:p
     );
     const names=resolvedPlayers.map(p=>p.name.trim()).filter(Boolean);
     if(names.length<2) return;
@@ -1080,9 +1079,8 @@ function App(){
 
   // ── SETUP ──────────────────────────────────────────────────────────────────
   if(screen==="setup"){
-    // Ensure Player 1 is always pre-filled with the logged-in user's name
-    const effectivePlayers = setupPlayers.map((p,i) =>
-      i===0 && !p.name && userProfile?.name ? {...p, name:userProfile.name} : p
+    const effectivePlayers = setupPlayers.map((p,i)=>
+      i===0 && !p.name && userProfile?.name ? {...p,name:userProfile.name} : p
     );
     const playerNames=effectivePlayers.map(p=>p.name.trim()).filter(Boolean);
     return(
