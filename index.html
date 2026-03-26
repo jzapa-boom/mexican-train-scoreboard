@@ -258,7 +258,8 @@ function HamburgerBtn({onOpen,style={}}){
 // ── Slide-in menu ───────────────────────────────────────────────────────────
 function SlideMenu({open,onClose,currentUser,userProfile,allPlayers,isPro,skin,navigate,setUpgradeFrom,setProfileFrom,setSquadsFrom,setRulesFrom,setRulesTab,setViewingPlayer,screen}){
   const C2={sky:"#70D6FF",pink:"#FF70A6",coral:"#FF9770",gold:"#FFD670",teal:"#2EC4B6",dark:"#1A1A2A",muted:"#888"};
-  const pl=userProfile;
+  const localMatch = allPlayers?.find(p => p.name === userProfile?.name) || allPlayers?.[0];
+  const pl = userProfile ? { ...localMatch, ...userProfile } : localMatch;
   if(!open) return null;
   function go(dest){onClose();setTimeout(()=>navigate(dest),220);}
   const menuItems=[
@@ -604,9 +605,11 @@ function App(){
       } else {
         fb().signInAnonymously(fb().auth).catch(function(err){
           console.error('Auth failed:',err);
-          // Still mark ready so user isn't stuck on loading screen
           setAuthReady(true);
         });
+        // Safari ITP can silently block auth from ever resolving.
+        // Hard timeout so the app never stays permanently on the loading screen.
+        setTimeout(function(){ setAuthReady(true); }, 5000);
       }
     });
     return()=>unsub();
@@ -616,7 +619,6 @@ function App(){
   useEffect(()=>{
     if(!userProfile?.name) return;
     setSetupPlayers(prev=>{
-      // Only pre-fill if Player 1 is still blank (don't overwrite if user already typed)
       if(prev[0]?.name) return prev;
       return [{name:userProfile.name}, ...prev.slice(1)];
     });
@@ -2781,6 +2783,11 @@ function App(){
   }
 
   // ── Loading ────────────────────────────────────────────────────────────────
+  const [loadingTooLong, setLoadingTooLong] = React.useState(false);
+  React.useEffect(()=>{
+    const t = setTimeout(()=>setLoadingTooLong(true), 4000);
+    return ()=>clearTimeout(t);
+  },[]);
   return(
     <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
       <div style={{width:48,height:48,borderRadius:12,background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -2789,6 +2796,11 @@ function App(){
       <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:"rgba(255,255,255,0.4)"}}>
         {authReady?"Loading...":"Starting up..."}
       </div>
+      {loadingTooLong&&(
+        <button onClick={()=>resetNav("splash")} style={{marginTop:12,padding:"12px 28px",borderRadius:50,background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.25)",color:"rgba(255,255,255,0.7)",fontSize:14,fontWeight:700,fontFamily:"'Nunito',sans-serif",cursor:"pointer"}}>
+          Tap to continue →
+        </button>
+      )}
     </Screen>
   );
 }
