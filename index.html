@@ -630,7 +630,11 @@ function App(){
   const isHost       = gameData?.hostName===myName;
 
   async function createGame(){
-    const names=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
+    // Apply userProfile name to Player 1 if still blank at create time
+    const resolvedPlayers = setupPlayers.map((p,i)=>
+      i===0 && !p.name.trim() && userProfile?.name ? {...p,name:userProfile.name} : p
+    );
+    const names=resolvedPlayers.map(p=>p.name.trim()).filter(Boolean);
     if(names.length<2) return;
     const code=genCode();
     const initScores={};
@@ -1076,7 +1080,11 @@ function App(){
 
   // ── SETUP ──────────────────────────────────────────────────────────────────
   if(screen==="setup"){
-    const playerNames=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
+    // Ensure Player 1 is always pre-filled with the logged-in user's name
+    const effectivePlayers = setupPlayers.map((p,i) =>
+      i===0 && !p.name && userProfile?.name ? {...p, name:userProfile.name} : p
+    );
+    const playerNames=effectivePlayers.map(p=>p.name.trim()).filter(Boolean);
     return(
       <Screen style={{background:C.bg}}>
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} allPlayers={allPlayers} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} screen={screen}/>
@@ -1160,7 +1168,7 @@ function App(){
           {/* Players */}
           <div style={{padding:"14px 16px 16px"}}>
             <div style={{fontWeight:800,fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:0.5,marginBottom:12}}>Players</div>
-            {setupPlayers.map((p,i)=>(
+            {effectivePlayers.map((p,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                 <Avatar name={p.name||"?"} idx={i} size={40}/>
                 <input
