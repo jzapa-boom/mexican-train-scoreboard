@@ -630,8 +630,7 @@ function App(){
   const isHost       = gameData?.hostName===myName;
 
   async function createGame(){
-    const p1=setupPlayers[0]?.name||userProfile?.name||myName||'';
-    const names=[p1,...setupPlayers.slice(1).map(p=>p.name.trim())].filter(Boolean);
+    const names=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
     if(names.length<2) return;
     const code=genCode();
     const initScores={};
@@ -876,10 +875,12 @@ function App(){
   }
 
   function goToProfile(name){
+    if(!name) return;
     const pl=allPlayers.find(p=>p.name===name);
-    if(!pl) return;
+    // For players not in local allPlayers (e.g. invited guests), create a stub
+    const player=pl||{id:null,name,avatarIdx:0,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
     setProfileFrom(screen);
-    setViewingPlayer(pl);
+    setViewingPlayer(player);
     navigate('profile');
   }
 
@@ -1077,8 +1078,7 @@ function App(){
 
   // ── SETUP ──────────────────────────────────────────────────────────────────
   if(screen==="setup"){
-    const p1name = setupPlayers[0]?.name || userProfile?.name || myName || '';
-    const playerNames=[p1name,...setupPlayers.slice(1).map(p=>p.name.trim())].filter(Boolean);
+    const playerNames=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
     return(
       <Screen style={{background:C.bg}}>
         <SlideMenu open={menuOpen} onClose={()=>setMenuOpen(false)} currentUser={currentUser} userProfile={userProfile} allPlayers={allPlayers} isPro={isPro} skin={skin} navigate={navigate} setUpgradeFrom={setUpgradeFrom} setProfileFrom={setProfileFrom} setSquadsFrom={setSquadsFrom} setRulesFrom={setRulesFrom} setRulesTab={setRulesTab} setViewingPlayer={setViewingPlayer} screen={screen}/>
@@ -1166,7 +1166,7 @@ function App(){
               <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                 <Avatar name={p.name||"?"} idx={i} size={40}/>
                 <input
-                  value={i===0 && !p.name ? (userProfile?.name||myName||'') : p.name}
+                  value={p.name}
                   onChange={e=>setSetupPlayers(prev=>prev.map((pl,j)=>j===i?{...pl,name:e.target.value}:pl))}
                   placeholder={`Player ${i+1}`}
                   style={{flex:1,padding:"13px 16px",borderRadius:12,border:"2px solid #eee",fontSize:16,fontFamily:"'Nunito',sans-serif",outline:"none",minHeight:48,background:"#fff"}}
