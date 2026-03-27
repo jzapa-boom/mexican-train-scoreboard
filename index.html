@@ -265,8 +265,8 @@ function SlideMenu({open,onClose,currentUser,userProfile,allPlayers,isPro,skin,n
   const menuItems=[
     {icon:<IconProfile size={17} color="#6c3fbf"/>,bg:"#f0e8ff",label:"My Profile",sub:"Stats, badges & history",
       action:()=>{
-        const me=allPlayers?.find(p=>p.name===userProfile?.name)||allPlayers?.[0];
-        if(!me) return;
+        const me=allPlayers?.find(p=>p.name===userProfile?.name)||allPlayers?.[0]
+          ||{id:null,name:userProfile?.name||"Player",avatarIdx:0,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
         setViewingPlayer(me);
         setProfileFrom(screen); go("profile");
       }},
@@ -878,8 +878,9 @@ function App(){
   }
 
   function goToProfile(name){
-    const pl=allPlayers.find(p=>p.name===name);
-    if(!pl) return;
+    if(!name) return;
+    const pl=allPlayers.find(p=>p.name===name)
+      ||{id:null,name,avatarIdx:0,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
     setProfileFrom(screen);
     setViewingPlayer(pl);
     navigate('profile');
