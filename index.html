@@ -266,7 +266,8 @@ function SlideMenu({open,onClose,currentUser,userProfile,allPlayers,isPro,skin,n
     {icon:<IconProfile size={17} color="#6c3fbf"/>,bg:"#f0e8ff",label:"My Profile",sub:"Stats, badges & history",
       action:()=>{
         const me=allPlayers?.find(p=>p.name===userProfile?.name)||allPlayers?.[0];
-        if(me) setViewingPlayer(me);
+        if(!me) return;
+        setViewingPlayer(me);
         setProfileFrom(screen); go("profile");
       }},
     {icon:<IconUsers size={17} color="#2a9fd6"/>,bg:"#e8f4ff",label:"My Squads",sub:"Manage your groups",
@@ -533,6 +534,7 @@ function App(){
   const [currentUser,setCurrentUser]   = useState(null);
   const [userProfile,setUserProfile]   = useState(null);
   const [authReady,setAuthReady]       = useState(false);
+  const [loadingTooLong,setLoadingTooLong] = useState(false);
   const [welcomeName,setWelcomeName]   = useState("");
   const [welcomeAvatar,setWelcomeAvatar] = useState(0);
   const [addingPlayer,setAddingPlayer] = useState(false);
@@ -551,6 +553,7 @@ function App(){
   const photoInputRef = useRef();
   const screenRef = useRef(screen);
   useEffect(()=>{ screenRef.current=screen; },[screen]);
+  useEffect(()=>{ const t=setTimeout(()=>setLoadingTooLong(true),4000); return ()=>clearTimeout(t); },[]);
 
   // Live sync
   useEffect(()=>{
@@ -875,12 +878,10 @@ function App(){
   }
 
   function goToProfile(name){
-    if(!name) return;
     const pl=allPlayers.find(p=>p.name===name);
-    // For players not in local allPlayers (e.g. invited guests), create a stub
-    const player=pl||{id:null,name,avatarIdx:0,wins:0,gamesPlayed:0,totalScore:0,gameHistory:[]};
+    if(!pl) return;
     setProfileFrom(screen);
-    setViewingPlayer(player);
+    setViewingPlayer(pl);
     navigate('profile');
   }
 
@@ -2777,8 +2778,6 @@ function App(){
   }
 
   // ── Loading ────────────────────────────────────────────────────────────────
-  const [loadingTooLong, setLoadingTooLong] = React.useState(false);
-  React.useEffect(()=>{ const t=setTimeout(()=>setLoadingTooLong(true),4000); return ()=>clearTimeout(t); },[]);
   return(
     <Screen style={{background:`linear-gradient(160deg, ${C.dark} 0%, #2a1a3a 100%)`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
       <div style={{width:48,height:48,borderRadius:12,background:`linear-gradient(135deg, ${C.coral}, ${C.pink})`,display:"flex",alignItems:"center",justifyContent:"center"}}>
