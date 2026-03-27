@@ -12,7 +12,7 @@ exports.handler = async function(event) {
     }
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -26,7 +26,7 @@ exports.handler = async function(event) {
                 }
               },
               {
-                text: "Count every pip (dot) on all domino tiles visible in this image. Return ONLY a single integer, nothing else."
+                text: "You are counting pips (dots) on domino tiles for scoring in Mexican Train Dominoes. Look at this photo and count every pip on every domino tile visible. Each tile has two halves — count the pips on both halves of every tile. A blank half has 0 pips. Return ONLY the total number of pips as a single integer, nothing else."
               }
             ]
           }],
@@ -36,6 +36,12 @@ exports.handler = async function(event) {
     );
 
     const data = await response.json();
+
+    if (!response.ok) {
+      const errMsg = data.error?.message || JSON.stringify(data);
+      return { statusCode: response.status, body: JSON.stringify({ error: errMsg }) };
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
     const count = parseInt(text);
 
