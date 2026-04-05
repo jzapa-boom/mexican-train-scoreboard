@@ -635,19 +635,20 @@ function App(){
   async function createGame(){
     const names=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
     if(names.length<2) return;
-    // Wait for anonymous auth before writing to Firebase (guards against ITP/slow auth)
-    if(!currentUser){
+    // Get the current auth user directly from Firebase (bypasses React state lag)
+    let activeUser = currentUser || fb().auth.currentUser;
+    if(!activeUser){
       try{
-        await new Promise((resolve,reject)=>{
-          const timeout=setTimeout(()=>reject(new Error("Auth timeout")),6000);
+        activeUser = await new Promise((resolve,reject)=>{
+          const timeout=setTimeout(()=>reject(new Error("Auth timeout")),8000);
           const unsub=fb().onAuthStateChanged(fb().auth,user=>{
             if(user){ clearTimeout(timeout); unsub(); resolve(user); }
           });
         });
       }catch(err){
         console.error("Auth wait failed:",err);
-        alert("Could not sign in — check your connection and try again.");
-        return;
+        // Auth failed but proceed anyway — Firebase rules may allow it, or we try without UID
+        activeUser = null;
       }
     }
     const code=genCode();
@@ -659,7 +660,7 @@ function App(){
     if(houseRules.gameLength==='6') allRounds=allRounds.slice(0,6);
     else if(houseRules.gameLength==='3') allRounds=allRounds.slice(0,3);
     const playerUids={};
-    if(currentUser) playerUids[names[0]]=currentUser.uid;
+    if(activeUser) playerUids[names[0]]=activeUser.uid;
     try{
       await fb().set(fb().ref(fb().db,`games/${code}`),{
         startPip:setupPip,
