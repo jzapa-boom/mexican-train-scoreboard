@@ -635,6 +635,21 @@ function App(){
   async function createGame(){
     const names=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
     if(names.length<2) return;
+    // Wait for anonymous auth before writing to Firebase (guards against ITP/slow auth)
+    if(!currentUser){
+      try{
+        await new Promise((resolve,reject)=>{
+          const timeout=setTimeout(()=>reject(new Error("Auth timeout")),6000);
+          const unsub=fb().onAuthStateChanged(fb().auth,user=>{
+            if(user){ clearTimeout(timeout); unsub(); resolve(user); }
+          });
+        });
+      }catch(err){
+        console.error("Auth wait failed:",err);
+        alert("Could not sign in — check your connection and try again.");
+        return;
+      }
+    }
     const code=genCode();
     const initScores={};
     names.forEach(n=>initScores[n]={});
@@ -1181,8 +1196,8 @@ function App(){
             {setupPlayers.length<8&&(
               <button onClick={()=>setSetupPlayers(prev=>[...prev,{name:""}])} style={{width:"100%",padding:"13px",borderRadius:12,minHeight:48,border:`2px dashed ${C.sky}99`,background:`${C.sky}0a`,color:C.sky,fontSize:14,fontWeight:800,cursor:"pointer",marginTop:4}}>+ Add Player</button>
             )}
-            <button onClick={createGame} disabled={playerNames.length<2} style={{...btnStyle(playerNames.length<2?"#ddd":`linear-gradient(135deg, ${C.coral}, ${C.pink})`),width:"100%",marginTop:20,fontSize:18,padding:"17px",borderRadius:50,letterSpacing:1,boxShadow:playerNames.length<2?"none":`0 6px 24px ${C.pink}44`,cursor:playerNames.length<2?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-              <IconTrain size={22} color="#fff"/> Create Game
+            <button onClick={createGame} disabled={playerNames.length<2||!authReady} style={{...btnStyle(playerNames.length<2||!authReady?"#ddd":`linear-gradient(135deg, ${C.coral}, ${C.pink})`),width:"100%",marginTop:20,fontSize:18,padding:"17px",borderRadius:50,letterSpacing:1,boxShadow:playerNames.length<2||!authReady?"none":`0 6px 24px ${C.pink}44`,cursor:playerNames.length<2||!authReady?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+              <IconTrain size={22} color="#fff"/> {!authReady?"Connecting…":"Create Game"}
             </button>
           </div>
 
