@@ -79,10 +79,19 @@ window.onerror=function(msg,src,line,col,err){
   const db = getDatabase(fbApp);
   const auth = getAuth(fbApp);
 
+  // Sign in anonymously BEFORE exposing fb — guarantees auth.currentUser
+  // is populated by the time React mounts. Catches Safari ITP and network failures.
+  try {
+    await signInAnonymously(auth);
+  } catch(e) {
+    console.warn("Anonymous auth failed at init:", e.code, e.message);
+    // App will still mount — createGame will surface the real error
+  }
+
   // Expose to global so the Babel script can access
   window.__fb = { ref, set, get, onValue, update, increment, db, auth, signInAnonymously, onAuthStateChanged };
 
-  // Signal ready
+  // Signal ready (auth already attempted — either succeeded or failed gracefully)
   window.__fbReady = true;
   document.dispatchEvent(new Event("fbReady"));
 </script>
@@ -459,7 +468,11 @@ function useLS(key,initial){
 }
 
 // ── App ────────────────────────────────────────────────────────────────────
-function fb(){ return window.__fb; }
+function fb(){
+  const f = window.__fb;
+  if(!f) throw new Error("Firebase not initialized — please refresh the page");
+  return f;
+}
 
 function App(){
   const [screen,setScreen]           = useState("splash");
@@ -572,7 +585,8 @@ function App(){
     return()=>unsub();
   },[gameCode]);
 
-  // Firebase Auth
+  // Firebase Auth — signInAnonymously already ran in the module block,
+  // so onAuthStateChanged fires immediately with the user (or null if auth failed).
   useEffect(()=>{
     const unsub=fb().onAuthStateChanged(fb().auth,async(user)=>{
       if(user){
@@ -608,12 +622,16 @@ function App(){
           }
         }catch(err){console.error('Deep link failed:',err);}
       } else {
-        fb().signInAnonymously(fb().auth).catch(function(err){
-          console.error('Auth failed:',err);
+        // Auth failed or was blocked (Safari ITP, network, etc.)
+        // Try once more in case the module-level attempt was a transient failure
+        try {
+          await fb().signInAnonymously(fb().auth);
+          // onAuthStateChanged will fire again with the user — don't set authReady here
+        } catch(err) {
+          console.error('Auth retry failed:', err.code, err.message);
+          // Auth is genuinely broken — let user proceed but writes will fail with clear errors
           setAuthReady(true);
-        });
-        // Safari ITP can silently block auth from ever resolving.
-        setTimeout(function(){ setAuthReady(true); }, 5000);
+        }
       }
     });
     return()=>unsub();
@@ -635,21 +653,13 @@ function App(){
   async function createGame(){
     const names=setupPlayers.map(p=>p.name.trim()).filter(Boolean);
     if(names.length<2) return;
-    // Get the current auth user directly from Firebase (bypasses React state lag)
-    let activeUser = currentUser || fb().auth.currentUser;
+    // Auth should already be complete from module-level signIn.
+    // Use Firebase's synchronous property (always current), fall back to React state.
+    const activeUser = fb().auth.currentUser || currentUser;
     if(!activeUser){
-      try{
-        activeUser = await new Promise((resolve,reject)=>{
-          const timeout=setTimeout(()=>reject(new Error("Auth timeout")),8000);
-          const unsub=fb().onAuthStateChanged(fb().auth,user=>{
-            if(user){ clearTimeout(timeout); unsub(); resolve(user); }
-          });
-        });
-      }catch(err){
-        console.error("Auth wait failed:",err);
-        // Auth failed but proceed anyway — Firebase rules may allow it, or we try without UID
-        activeUser = null;
-      }
+      alert('Not signed in — please refresh the page and try again.');
+      console.error('createGame: no authenticated user. fb().auth.currentUser:', fb().auth.currentUser);
+      return;
     }
     const code=genCode();
     const initScores={};
@@ -660,7 +670,7 @@ function App(){
     if(houseRules.gameLength==='6') allRounds=allRounds.slice(0,6);
     else if(houseRules.gameLength==='3') allRounds=allRounds.slice(0,3);
     const playerUids={};
-    if(activeUser) playerUids[names[0]]=activeUser.uid;
+    playerUids[names[0]]=activeUser.uid;
     try{
       await fb().set(fb().ref(fb().db,`games/${code}`),{
         startPip:setupPip,
@@ -676,8 +686,12 @@ function App(){
       setGameCode(code);
       navigate("pickname");
     }catch(err){
-      console.error('Create game failed:',err);
-      alert('Could not create game — check your connection and try again.');
+      console.error('Create game failed:', err.code, err.message, err);
+      if(err.code==='PERMISSION_DENIED' || err.message?.includes('PERMISSION_DENIED')){
+        alert('Permission denied — your sign-in may have expired. Please refresh and try again.');
+      } else {
+        alert('Could not create game: '+(err.message||'Unknown error')+'\n\nPlease check your connection and try again.');
+      }
     }
   }
 
@@ -694,8 +708,12 @@ function App(){
       setJoinError("");
       navigate("pickname");
     }catch(err){
-      console.error('Lookup failed:',err);
-      setJoinError("Connection error — check your internet and try again");
+      console.error('Lookup failed:', err.code, err.message, err);
+      if(err.code==='PERMISSION_DENIED' || err.message?.includes('PERMISSION_DENIED')){
+        setJoinError("Permission denied — please refresh and try again");
+      } else {
+        setJoinError("Connection error — check your internet and try again");
+      }
     }
   }
 
@@ -720,8 +738,12 @@ function App(){
       setSelected({});setCameraScore(null);setEditingRound(null);setScoringFor("");
       navigate("scorecard");
     }catch(err){
-      console.error('Submit score failed:',err);
-      alert('Could not submit score — check your connection and try again.');
+      console.error('Submit score failed:', err.code, err.message, err);
+      if(err.code==='PERMISSION_DENIED' || err.message?.includes('PERMISSION_DENIED')){
+        alert('Permission denied — your sign-in may have expired. Please refresh and try again.');
+      } else {
+        alert('Could not submit score: '+(err.message||'Unknown error'));
+      }
     }
   }
 
@@ -1900,7 +1922,13 @@ function App(){
         name,avatarIdx:welcomeAvatar,createdAt:Date.now(),
         email:null,isPro:false,gamesPlayed:0,wins:0,totalScore:0,gameHistory:[],
       };
-      await fb().set(fb().ref(fb().db,`profiles/${currentUser.uid}`),profile);
+      try{
+        await fb().set(fb().ref(fb().db,`profiles/${currentUser.uid}`),profile);
+      }catch(err){
+        console.error('Save profile failed:', err.code, err.message, err);
+        alert('Could not save profile: '+(err.message||'Unknown error'));
+        return;
+      }
       setUserProfile(profile);
       setMyName(name);
       // Retroactive claim — if they came from a completed game, write results now
