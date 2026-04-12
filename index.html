@@ -967,8 +967,9 @@ function App(){
       const n=parseInt(data.count??"");
       if(isNaN(n)) throw new Error("bad");
       setCameraScore(n);
-    }catch{
-      setCameraError("Couldn't count pips — try a clearer photo");
+    }catch(err){
+      console.error('Pip count failed:', err);
+      setCameraError("Couldn't count pips — "+(err.message||"try a clearer photo"));
     }finally{
       setCameraLoading(false);
       e.target.value="";
