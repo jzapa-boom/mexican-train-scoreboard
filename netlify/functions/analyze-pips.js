@@ -26,11 +26,11 @@ exports.handler = async function(event) {
                 }
               },
               {
-                text: "Count every pip (dot) on all domino tiles visible in this image. Return ONLY a single integer, nothing else."
+                text: "You are a domino pip counter. Count the total number of pips (dots) on ALL domino tiles visible in this photo. Respond with ONLY a number. No words, no explanation, no punctuation — just the number."
               }
             ]
           }],
-          generationConfig: { maxOutputTokens: 16 }
+          generationConfig: { maxOutputTokens: 64, thinkingConfig: { thinkingBudget: 0 } }
         })
       }
     );
@@ -44,7 +44,9 @@ exports.handler = async function(event) {
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-    const count = parseInt(text);
+    // Extract the first number from the response, even if model added words
+    const match = text.match(/\d+/);
+    const count = match ? parseInt(match[0]) : NaN;
 
     if (isNaN(count)) {
       return { statusCode: 422, body: JSON.stringify({ error: "Could not parse count", raw: text }) };
