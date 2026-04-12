@@ -26,11 +26,11 @@ exports.handler = async function(event) {
                 }
               },
               {
-                text: "You are a domino pip counter. Count the total number of pips (dots) on ALL domino tiles visible in this photo. Respond with ONLY a number. No words, no explanation, no punctuation — just the number."
+                text: "Count the pips (dots) on each domino tile in this photo. Each domino has two halves — count each half separately. List every tile as: left pips + right pips = tile total. After listing all tiles, write TOTAL: followed by the grand total. Be very careful with tiles that have 9, 10, 11, or 12 pips on one half — count row by row."
               }
             ]
           }],
-          generationConfig: { maxOutputTokens: 64, thinkingConfig: { thinkingBudget: 0 } }
+          generationConfig: { maxOutputTokens: 512, thinkingConfig: { thinkingBudget: 0 } }
         })
       }
     );
@@ -44,12 +44,17 @@ exports.handler = async function(event) {
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-    // Extract the first number from the response, even if model added words
-    const match = text.match(/\d+/);
-    const count = match ? parseInt(match[0]) : NaN;
-
+    // Look for TOTAL: N pattern first, fall back to last number in response
+    const totalMatch = text.match(/TOTAL[:\s]+(\d+)/i);
+    const count = totalMatch ? parseInt(totalMatch[1]) : NaN;
     if (isNaN(count)) {
-      return { statusCode: 422, body: JSON.stringify({ error: "Could not parse count", raw: text }) };
+      // Fallback: grab the last number in the response (likely the sum)
+      const allNums = text.match(/\d+/g);
+      const fallback = allNums ? parseInt(allNums[allNums.length - 1]) : NaN;
+      if (isNaN(fallback)) {
+        return { statusCode: 422, body: JSON.stringify({ error: "Could not parse count", raw: text }) };
+      }
+      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ count: fallback }) };
     }
 
     return {
