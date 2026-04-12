@@ -26,11 +26,11 @@ exports.handler = async function(event) {
                 }
               },
               {
-                text: "Count the pips (dots) on each domino tile in this photo. Each domino has two halves — count each half separately. List every tile as: left pips + right pips = tile total. After listing all tiles, write TOTAL: followed by the grand total. Be very careful with tiles that have 9, 10, 11, or 12 pips on one half — count row by row."
+                text: "This photo shows domino tiles. Count the pips (dots) on every tile. For each tile, count the left half and right half separately, then add them. Finally give the grand total of all pips across all tiles. End your response with the grand total on its own line like: TOTAL: 82"
               }
             ]
           }],
-          generationConfig: { maxOutputTokens: 512, thinkingConfig: { thinkingBudget: 0 } }
+          generationConfig: { maxOutputTokens: 1024 }
         })
       }
     );
@@ -43,7 +43,10 @@ exports.handler = async function(event) {
       return { statusCode: 502, body: JSON.stringify({ error: "Gemini API error: " + errMsg }) };
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    // With thinking enabled, find the text part (skip thinking parts)
+    const textPart = parts.filter(p => p.text && !p.thought).pop();
+    const text = textPart?.text?.trim() ?? "";
     // Look for TOTAL: N pattern first, fall back to last number in response
     const totalMatch = text.match(/TOTAL[:\s]+(\d+)/i);
     const count = totalMatch ? parseInt(totalMatch[1]) : NaN;
